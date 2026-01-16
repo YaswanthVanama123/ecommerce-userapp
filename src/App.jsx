@@ -63,9 +63,9 @@ function AppContent() {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="w-full min-h-screen flex flex-col bg-gray-50">
       <Header />
-      <main className="flex-grow">
+      <main className="w-full flex-grow">
         <ErrorBoundary>
           <Suspense fallback={<Loading />}>
             <Routes>

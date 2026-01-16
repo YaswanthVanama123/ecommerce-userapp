@@ -1,249 +1,91 @@
-import { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { productApi } from '../api';
 import ProductCard from '../components/products/ProductCard';
 
-// Memoized Category Card Component
-const CategoryCard = memo(({ to, gradient, icon, title }) => (
-  <Link
-    to={to}
-    className="relative h-64 rounded-lg overflow-hidden shadow-lg group"
-  >
-    <div className={`absolute inset-0 ${gradient} group-hover:scale-105 transition-transform duration-300`}>
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center text-white">
-          {icon}
-          <h3 className="text-2xl font-bold">{title}</h3>
-        </div>
-      </div>
-    </div>
-  </Link>
-));
-
-CategoryCard.displayName = 'CategoryCard';
-
-// Memoized Feature Card Component
-const FeatureCard = memo(({ icon, title, description }) => (
-  <div className="text-center">
-    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-      {icon}
-    </div>
-    <h3 className="text-xl font-semibold mb-2">{title}</h3>
-    <p className="text-gray-600">{description}</p>
-  </div>
-));
-
-FeatureCard.displayName = 'FeatureCard';
-
-// Memoized Loading Spinner
-const LoadingSpinner = memo(() => (
-  <div className="flex justify-center py-12">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-  </div>
-));
-
-LoadingSpinner.displayName = 'LoadingSpinner';
-
-// Memoized Error Display
-const ErrorDisplay = memo(({ error, onRetry }) => (
-  <div className="text-center py-12">
-    <p className="text-red-600">{error}</p>
-    <button
-      onClick={onRetry}
-      className="mt-4 text-blue-600 hover:text-blue-800 font-semibold"
-    >
-      Try Again
-    </button>
-  </div>
-));
-
-ErrorDisplay.displayName = 'ErrorDisplay';
-
-// Memoized Empty State
-const EmptyState = memo(() => (
-  <div className="text-center py-12">
-    <p className="text-gray-600">No featured products available at the moment.</p>
-    <Link
-      to="/products"
-      className="mt-4 inline-block text-blue-600 hover:text-blue-800 font-semibold"
-    >
-      Browse All Products
-    </Link>
-  </div>
-));
-
-EmptyState.displayName = 'EmptyState';
-
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  // Memoized fetch function
-  const fetchFeaturedProducts = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await productApi.getFeaturedProducts();
-      setFeaturedProducts(response.data);
-    } catch (err) {
-      setError('Failed to load featured products');
-      console.error('Error fetching featured products:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
+    const fetchFeaturedProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await productApi.getFeaturedProducts();
+        setFeaturedProducts(response.data.slice(0, 8));
+      } catch (err) {
+        console.error('Error fetching featured products:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchFeaturedProducts();
-  }, [fetchFeaturedProducts]);
+  }, []);
 
-  // Memoize sliced products
-  const displayedProducts = useMemo(
-    () => featuredProducts.slice(0, 8),
-    [featuredProducts]
-  );
-
-  // Memoize category data
-  const categories = useMemo(() => [
+  const categories = [
     {
-      to: '/products?category=electronics',
-      gradient: 'bg-gradient-to-br from-purple-500 to-purple-700',
-      title: 'Electronics',
-      icon: (
-        <svg
-          className="w-16 h-16 mx-auto mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
-          />
-        </svg>
-      )
+      title: 'Women',
+      subtitle: 'Latest Fashion',
+      link: '/products?category=women',
+      gradient: 'from-pink-500 to-rose-500',
+      icon: '👗'
     },
     {
-      to: '/products?category=fashion',
-      gradient: 'bg-gradient-to-br from-pink-500 to-pink-700',
-      title: 'Fashion',
-      icon: (
-        <svg
-          className="w-16 h-16 mx-auto mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-          />
-        </svg>
-      )
+      title: 'Men',
+      subtitle: 'Trendy Styles',
+      link: '/products?category=men',
+      gradient: 'from-blue-500 to-cyan-500',
+      icon: '👔'
     },
     {
-      to: '/products?category=home',
-      gradient: 'bg-gradient-to-br from-green-500 to-green-700',
-      title: 'Home & Living',
-      icon: (
-        <svg
-          className="w-16 h-16 mx-auto mb-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-          />
-        </svg>
-      )
+      title: 'Kids',
+      subtitle: 'Fun & Comfort',
+      link: '/products?category=kids',
+      gradient: 'from-yellow-400 to-orange-500',
+      icon: '🧸'
+    },
+    {
+      title: 'Accessories',
+      subtitle: 'Complete Look',
+      link: '/products?category=accessories',
+      gradient: 'from-purple-500 to-indigo-500',
+      icon: '👜'
     }
-  ], []);
+  ];
 
-  // Memoize features data
-  const features = useMemo(() => [
+  const offers = [
     {
-      icon: (
-        <svg
-          className="w-8 h-8 text-blue-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      ),
-      title: 'Quality Products',
-      description: 'We ensure all products meet our high quality standards'
+      title: 'Flash Sale',
+      description: 'Up to 70% OFF',
+      bg: 'bg-gradient-to-r from-red-500 to-pink-500',
+      link: '/products?tag=sale'
     },
     {
-      icon: (
-        <svg
-          className="w-8 h-8 text-blue-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
-      title: 'Best Prices',
-      description: 'Competitive pricing and regular discounts'
-    },
-    {
-      icon: (
-        <svg
-          className="w-8 h-8 text-blue-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 10V3L4 14h7v7l9-11h-7z"
-          />
-        </svg>
-      ),
-      title: 'Fast Delivery',
-      description: 'Quick and reliable shipping to your doorstep'
+      title: 'New Arrivals',
+      description: 'Fresh Collections',
+      bg: 'bg-gradient-to-r from-teal-500 to-green-500',
+      link: '/products?tag=new'
     }
-  ], []);
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white">
-        <div className="container mx-auto px-4 py-20">
-          <div className="max-w-3xl">
-            <h1 className="text-5xl font-bold mb-6">
-              Welcome to ShopHub
+    <div className="w-full min-h-screen bg-gray-50 pb-20 lg:pb-0">
+      {/* Hero Banner */}
+      <section className="w-full bg-gradient-to-br from-pink-500 via-pink-600 to-purple-600 text-white">
+        <div className="w-full px-4 max-w-7xl mx-auto py-12 md:py-16 lg:py-20">
+          <div className="max-w-2xl mx-auto text-center">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+              Your Style,
+              <br />
+              Your Way
             </h1>
-            <p className="text-xl mb-8 text-blue-100">
-              Discover amazing products at unbeatable prices. Your satisfaction is our priority.
+            <p className="text-lg md:text-xl mb-6 text-white/90">
+              Discover the latest trends in fashion
             </p>
             <Link
               to="/products"
-              className="inline-block bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
+              className="inline-block bg-white text-pink-600 px-8 py-3 md:py-4 rounded-lg font-bold hover:shadow-lg transition text-sm md:text-base"
             >
               Shop Now
             </Link>
@@ -251,72 +93,122 @@ const Home = () => {
         </div>
       </section>
 
-      {/* Featured Categories */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-            Shop by Category
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {categories.map((category) => (
-              <CategoryCard
-                key={category.to}
-                to={category.to}
-                gradient={category.gradient}
-                icon={category.icon}
-                title={category.title}
-              />
+      {/* Offers Banner - Mobile Optimized */}
+      <section className="w-full bg-white py-4 md:py-6">
+        <div className="w-full px-4 max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 gap-3 md:gap-4">
+            {offers.map((offer) => (
+              <Link
+                key={offer.title}
+                to={offer.link}
+                className={`${offer.bg} rounded-lg p-4 md:p-6 text-white text-center hover:scale-105 transition`}
+              >
+                <p className="text-xs md:text-sm font-medium mb-1 opacity-90">{offer.title}</p>
+                <p className="text-lg md:text-2xl font-bold">{offer.description}</p>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Featured Products */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">
-              Featured Products
+      {/* Category Cards - Mobile Optimized Grid */}
+      <section className="w-full py-6 md:py-8">
+        <div className="w-full px-4 max-w-7xl mx-auto">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">
+            Shop by Category
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            {categories.map((category) => (
+              <Link
+                key={category.title}
+                to={category.link}
+                className="group"
+              >
+                <div className={`bg-gradient-to-br ${category.gradient} rounded-xl p-6 md:p-8 text-white text-center hover:shadow-lg transition-all group-hover:scale-105`}>
+                  <div className="text-4xl md:text-5xl mb-3">{category.icon}</div>
+                  <h3 className="text-lg md:text-xl font-bold mb-1">{category.title}</h3>
+                  <p className="text-xs md:text-sm opacity-90">{category.subtitle}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trending Products */}
+      <section className="w-full py-6 md:py-8 bg-white">
+        <div className="w-full px-4 max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-4 md:mb-6">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+              Trending Now
             </h2>
             <Link
               to="/products"
-              className="text-blue-600 hover:text-blue-800 font-semibold"
+              className="text-pink-600 hover:text-pink-700 font-semibold text-sm md:text-base"
             >
-              View All
+              View All →
             </Link>
           </div>
 
           {loading ? (
-            <LoadingSpinner />
-          ) : error ? (
-            <ErrorDisplay error={error} onRetry={fetchFeaturedProducts} />
-          ) : displayedProducts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {displayedProducts.map((product) => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-gray-200 rounded-lg h-64 md:h-80 animate-pulse" />
+              ))}
+            </div>
+          ) : featuredProducts.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+              {featuredProducts.map((product) => (
                 <ProductCard key={product._id} product={product} />
               ))}
             </div>
           ) : (
-            <EmptyState />
+            <div className="text-center py-12 text-gray-500">
+              <p>No products available</p>
+              <Link
+                to="/products"
+                className="mt-4 inline-block text-primary-600 hover:text-primary-700 font-semibold"
+              >
+                Explore All Products
+              </Link>
+            </div>
           )}
         </div>
       </section>
 
-      {/* Why Choose Us */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-gray-900 mb-12 text-center">
-            Why Choose ShopHub
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {features.map((feature) => (
-              <FeatureCard
-                key={feature.title}
-                icon={feature.icon}
-                title={feature.title}
-                description={feature.description}
-              />
-            ))}
+      {/* Features - Mobile Optimized */}
+      <section className="w-full py-8 md:py-12 bg-gray-50">
+        <div className="w-full px-4 max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+            <div className="text-center">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-base md:text-lg font-bold mb-2">Authentic Products</h3>
+              <p className="text-sm text-gray-600">100% genuine products</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-base md:text-lg font-bold mb-2">Best Prices</h3>
+              <p className="text-sm text-gray-600">Lowest prices guaranteed</p>
+            </div>
+
+            <div className="text-center">
+              <div className="w-14 h-14 md:w-16 md:h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+                <svg className="w-7 h-7 md:w-8 md:h-8 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-base md:text-lg font-bold mb-2">Fast Delivery</h3>
+              <p className="text-sm text-gray-600">Quick shipping nationwide</p>
+            </div>
           </div>
         </div>
       </section>
