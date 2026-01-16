@@ -1,0 +1,51 @@
+{
+  "name": "user-webapp",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:prod": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
+    "build:analyze": "vite build && open dist/stats.html",
+    "preview": "vite preview",
+    "preview:prod": "vite preview --port 4173",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "clean": "rm -rf dist",
+    "prebuild": "npm run clean",
+    "postbuild": "npm run verify:build",
+    "verify:build": "ls -lh dist/assets/js/ && echo 'Build completed successfully'",
+    "serve": "npx serve dist -l 3000",
+    "test:build": "npm run build && npm run preview",
+    "pwa:icons": "node scripts/generate-icons.js",
+    "pwa:placeholders": "node scripts/generate-placeholder-icons.js",
+    "pwa:test": "npm run build && npx serve dist -l 3000"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-hook-form": "^7.71.1",
+    "react-router-dom": "^7.12.0",
+    "react-toastify": "^11.0.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.4.23",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "postcss": "^8.5.6",
+    "rollup-plugin-visualizer": "^6.0.5",
+    "tailwindcss": "^4.1.18",
+    "terser": "^5.44.1",
+    "vite": "^7.2.4",
+    "vite-plugin-compression": "^0.5.1"
+  }
+}
