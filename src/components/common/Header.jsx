@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { useAuthWithActions } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 
 const Header = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated } = useAuthWithActions();
   const { totalItems } = useCart();
   const navigate = useNavigate();
 
@@ -25,7 +25,7 @@ const Header = () => {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm w-full">
         <div className="w-full px-4 max-w-7xl mx-auto">
           {/* Mobile Header */}
-          <div className="lg:hidden py-3 flex items-center justify-between w-full">
+          <div className="lg:hidden py-4 flex items-center justify-between w-full">
             {/* Logo */}
             <Link to="/" className="flex items-center">
               <span className="text-2xl font-bold text-pink-600">
@@ -58,7 +58,7 @@ const Header = () => {
           </div>
 
           {/* Desktop/Tablet Header */}
-          <div className="hidden lg:flex items-center justify-between py-4">
+          <div className="hidden lg:flex items-center justify-between py-9">
             {/* Logo */}
             <Link to="/" className="flex items-center">
               <span className="text-3xl font-bold text-pink-600">
@@ -149,7 +149,7 @@ const Header = () => {
         {/* Category Navigation - Desktop/Tablet */}
         <div className="hidden lg:block border-t border-gray-200 w-full">
           <div className="w-full px-4 max-w-7xl mx-auto">
-            <nav className="flex items-center space-x-8 py-3">
+            <nav className="flex items-center space-x-8 py-4">
               <Link to="/products?category=women" className="text-gray-700 hover:text-pink-600 font-medium">
                 Women
               </Link>

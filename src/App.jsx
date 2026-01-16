@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -49,6 +49,8 @@ const Profile = lazy(() =>
 );
 
 function AppContent() {
+  const location = useLocation();
+
   useEffect(() => {
     // Initialize performance monitoring
     if (import.meta.env.VITE_ENABLE_PERFORMANCE_MONITORING === 'true') {
@@ -78,14 +80,7 @@ function AppContent() {
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/products" element={<ProductListing />} />
               <Route path="/products/:id" element={<ProductDetail />} />
-              <Route
-                path="/cart"
-                element={
-                  <PrivateRoute>
-                    <Cart />
-                  </PrivateRoute>
-                }
-              />
+              <Route path="/cart" element={<Cart />} />
               <Route
                 path="/checkout"
                 element={
@@ -114,7 +109,7 @@ function AppContent() {
           </Suspense>
         </ErrorBoundary>
       </main>
-      <Footer />
+      {location.pathname === '/' && <Footer />}
     </div>
   );
 }

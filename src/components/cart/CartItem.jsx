@@ -1,8 +1,8 @@
 import { memo, useCallback, useMemo } from 'react';
-import { useCart } from '../../context/CartContext';
+import { useCartActions } from '../../context/CartContext';
 
 const CartItem = memo(({ item }) => {
-  const { updateQuantity, removeItem } = useCart();
+  const { updateQuantity, removeItem } = useCartActions();
 
   // Memoize computed values
   const imageUrl = useMemo(
@@ -16,18 +16,28 @@ const CartItem = memo(({ item }) => {
   );
 
   const formattedPrice = useMemo(
-    () => Math.round(item.price),
-    [item.price]
+    () => {
+      const price = item.price || item.product?.price || 0;
+      return Math.round(price);
+    },
+    [item.price, item.product?.price]
   );
 
   const formattedSubtotal = useMemo(
-    () => Math.round(item.subtotal),
-    [item.subtotal]
+    () => {
+      const price = item.price || item.product?.price || 0;
+      const subtotal = item.subtotal || (price * item.quantity);
+      return Math.round(subtotal);
+    },
+    [item.subtotal, item.price, item.product?.price, item.quantity]
   );
 
   const isAtMaxStock = useMemo(
-    () => item.quantity >= item.product.stock,
-    [item.quantity, item.product.stock]
+    () => {
+      const stock = item.product?.stock || 999; // Default to high number if stock not available
+      return item.quantity >= stock;
+    },
+    [item.quantity, item.product?.stock]
   );
 
   const isAtMinQuantity = useMemo(
@@ -38,11 +48,12 @@ const CartItem = memo(({ item }) => {
   // Memoize event handlers
   const handleQuantityChange = useCallback(
     async (newQuantity) => {
-      if (newQuantity > 0 && newQuantity <= item.product.stock) {
+      const stock = item.product?.stock || 999;
+      if (newQuantity > 0 && newQuantity <= stock) {
         await updateQuantity(item._id, newQuantity);
       }
     },
-    [item._id, item.product.stock, updateQuantity]
+    [item._id, item.product?.stock, updateQuantity]
   );
 
   const handleIncrement = useCallback(() => {

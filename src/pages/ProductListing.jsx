@@ -25,6 +25,38 @@ const ProductListing = () => {
     sort: searchParams.get('sort') || '-createdAt'
   });
 
+  // Filter section states
+  const [openSections, setOpenSections] = useState({
+    category: true,
+    price: true,
+    sort: true
+  });
+
+  const toggleSection = (section) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
+
+  // Price ranges
+  const priceRanges = [
+    { label: 'Under ₹500', min: 0, max: 500 },
+    { label: '₹500 - ₹1000', min: 500, max: 1000 },
+    { label: '₹1000 - ₹2000', min: 1000, max: 2000 },
+    { label: '₹2000 - ₹5000', min: 2000, max: 5000 },
+    { label: 'Above ₹5000', min: 5000, max: '' }
+  ];
+
+  const selectPriceRange = (range) => {
+    setFilters(prev => ({
+      ...prev,
+      minPrice: range.min,
+      maxPrice: range.max
+    }));
+  };
+
+  const isRangeSelected = (range) => {
+    return filters.minPrice == range.min && filters.maxPrice == range.max;
+  };
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -138,81 +170,161 @@ const ProductListing = () => {
         <div className="lg:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setShowFilters(false)}>
           <div className="absolute right-0 top-0 bottom-0 w-80 bg-white shadow-xl overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold">Filters</h2>
-                <button onClick={() => setShowFilters(false)} className="text-gray-500">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6 pb-4 border-b">
+                <h2 className="text-lg font-bold text-gray-900">Filters</h2>
+                <button onClick={() => setShowFilters(false)} className="text-gray-500 hover:text-gray-700">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
-              {/* Category */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <select
-                  value={filters.category}
-                  onChange={(e) => handleFilterChange('category', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                >
-                  <option value="">All Categories</option>
-                  <option value="women">Women</option>
-                  <option value="men">Men</option>
-                  <option value="kids">Kids</option>
-                  <option value="accessories">Accessories</option>
-                  <option value="footwear">Footwear</option>
-                </select>
-              </div>
-
-              {/* Price Range */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
-                <div className="flex space-x-2">
-                  <input
-                    type="number"
-                    value={filters.minPrice}
-                    onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-                    placeholder="Min"
-                    className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                  <input
-                    type="number"
-                    value={filters.maxPrice}
-                    onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-                    placeholder="Max"
-                    className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
-              </div>
-
-              {/* Sort */}
+              {/* Category Section */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-                <select
-                  value={filters.sort}
-                  onChange={(e) => handleFilterChange('sort', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                <button
+                  onClick={() => toggleSection('category')}
+                  className="flex items-center justify-between w-full mb-3"
                 >
-                  <option value="-createdAt">Newest First</option>
-                  <option value="createdAt">Oldest First</option>
-                  <option value="price">Price: Low to High</option>
-                  <option value="-price">Price: High to Low</option>
-                  <option value="name">Name: A to Z</option>
-                  <option value="-name">Name: Z to A</option>
-                </select>
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase">Category</h3>
+                  <svg
+                    className={`w-5 h-5 transition-transform ${openSections.category ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {openSections.category && (
+                  <div className="space-y-2">
+                    {['All Categories', 'Women', 'Men', 'Kids', 'Accessories', 'Footwear'].map((cat) => (
+                      <label
+                        key={cat}
+                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      >
+                        <input
+                          type="radio"
+                          name="category"
+                          checked={filters.category === (cat === 'All Categories' ? '' : cat.toLowerCase())}
+                          onChange={() => handleFilterChange('category', cat === 'All Categories' ? '' : cat.toLowerCase())}
+                          className="w-4 h-4 text-pink-600 focus:ring-pink-500"
+                        />
+                        <span className="text-sm text-gray-700">{cat}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Price Range Section */}
+              <div className="mb-6 pb-6 border-b">
+                <button
+                  onClick={() => toggleSection('price')}
+                  className="flex items-center justify-between w-full mb-3"
+                >
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase">Price Range</h3>
+                  <svg
+                    className={`w-5 h-5 transition-transform ${openSections.price ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {openSections.price && (
+                  <div className="space-y-2">
+                    {priceRanges.map((range, index) => (
+                      <button
+                        key={index}
+                        onClick={() => selectPriceRange(range)}
+                        className={`w-full text-left px-3 py-2 rounded-lg border transition ${
+                          isRangeSelected(range)
+                            ? 'border-pink-600 bg-pink-50 text-pink-700 font-medium'
+                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        }`}
+                      >
+                        <span className="text-sm">{range.label}</span>
+                      </button>
+                    ))}
+                    {/* Custom Range */}
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs text-gray-500 mb-2">Custom Range</p>
+                      <div className="flex space-x-2">
+                        <input
+                          type="number"
+                          value={filters.minPrice}
+                          onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                          placeholder="Min"
+                          className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                        <input
+                          type="number"
+                          value={filters.maxPrice}
+                          onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                          placeholder="Max"
+                          className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Sort Section */}
+              <div className="mb-6">
+                <button
+                  onClick={() => toggleSection('sort')}
+                  className="flex items-center justify-between w-full mb-3"
+                >
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase">Sort By</h3>
+                  <svg
+                    className={`w-5 h-5 transition-transform ${openSections.sort ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {openSections.sort && (
+                  <div className="space-y-2">
+                    {[
+                      { value: '-createdAt', label: 'Newest First' },
+                      { value: 'price', label: 'Price: Low to High' },
+                      { value: '-price', label: 'Price: High to Low' },
+                      { value: 'name', label: 'Name: A to Z' }
+                    ].map((option) => (
+                      <label
+                        key={option.value}
+                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      >
+                        <input
+                          type="radio"
+                          name="sort"
+                          checked={filters.sort === option.value}
+                          onChange={() => handleFilterChange('sort', option.value)}
+                          className="w-4 h-4 text-pink-600 focus:ring-pink-500"
+                        />
+                        <span className="text-sm text-gray-700">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Buttons */}
-              <div className="space-y-2">
+              <div className="space-y-2 mt-6">
                 <button
                   onClick={applyFilters}
-                  className="w-full bg-pink-600 text-white py-3 rounded-lg hover:bg-pink-700 transition font-medium"
+                  className="w-full bg-pink-600 text-white py-3 rounded-lg hover:bg-pink-700 transition font-medium shadow-sm"
                 >
                   Apply Filters
                 </button>
                 <button
                   onClick={clearFilters}
-                  className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition font-medium"
+                  className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg hover:bg-gray-50 transition font-medium"
                 >
                   Clear All
                 </button>
@@ -228,78 +340,161 @@ const ProductListing = () => {
           {/* Desktop Filter Sidebar */}
           <aside className="hidden lg:block lg:w-64 flex-shrink-0">
             <div className="bg-white rounded-lg shadow-sm p-6 sticky top-20">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Filters</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-gray-900">Filters</h2>
+                {(filters.category || filters.minPrice || filters.maxPrice) && (
+                  <button
+                    onClick={clearFilters}
+                    className="text-xs text-pink-600 hover:text-pink-700 font-medium"
+                  >
+                    Clear All
+                  </button>
+                )}
+              </div>
 
-              {/* Category */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                <select
-                  value={filters.category}
-                  onChange={(e) => handleFilterChange('category', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+              {/* Category Section */}
+              <div className="mb-6 pb-6 border-b">
+                <button
+                  onClick={() => toggleSection('category')}
+                  className="flex items-center justify-between w-full mb-3"
                 >
-                  <option value="">All Categories</option>
-                  <option value="women">Women</option>
-                  <option value="men">Men</option>
-                  <option value="kids">Kids</option>
-                  <option value="accessories">Accessories</option>
-                  <option value="footwear">Footwear</option>
-                </select>
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase">Category</h3>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${openSections.category ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {openSections.category && (
+                  <div className="space-y-2">
+                    {['All Categories', 'Women', 'Men', 'Kids', 'Accessories', 'Footwear'].map((cat) => (
+                      <label
+                        key={cat}
+                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded transition"
+                      >
+                        <input
+                          type="radio"
+                          name="category-desktop"
+                          checked={filters.category === (cat === 'All Categories' ? '' : cat.toLowerCase())}
+                          onChange={() => {
+                            handleFilterChange('category', cat === 'All Categories' ? '' : cat.toLowerCase());
+                          }}
+                          className="w-4 h-4 text-pink-600 focus:ring-pink-500"
+                        />
+                        <span className="text-sm text-gray-700">{cat}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Price Range */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Price Range</label>
-                <div className="flex space-x-2">
-                  <input
-                    type="number"
-                    value={filters.minPrice}
-                    onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-                    placeholder="Min"
-                    className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                  <input
-                    type="number"
-                    value={filters.maxPrice}
-                    onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-                    placeholder="Max"
-                    className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
+              {/* Price Range Section */}
+              <div className="mb-6 pb-6 border-b">
+                <button
+                  onClick={() => toggleSection('price')}
+                  className="flex items-center justify-between w-full mb-3"
+                >
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase">Price Range</h3>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${openSections.price ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {openSections.price && (
+                  <div className="space-y-2">
+                    {priceRanges.map((range, index) => (
+                      <button
+                        key={index}
+                        onClick={() => selectPriceRange(range)}
+                        className={`w-full text-left px-3 py-2 rounded-lg border transition ${
+                          isRangeSelected(range)
+                            ? 'border-pink-600 bg-pink-50 text-pink-700 font-medium'
+                            : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                        }`}
+                      >
+                        <span className="text-sm">{range.label}</span>
+                      </button>
+                    ))}
+                    {/* Custom Range */}
+                    <div className="mt-3 pt-3 border-t">
+                      <p className="text-xs text-gray-500 mb-2">Custom Range</p>
+                      <div className="flex space-x-2">
+                        <input
+                          type="number"
+                          value={filters.minPrice}
+                          onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                          placeholder="Min"
+                          className="w-1/2 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                        <input
+                          type="number"
+                          value={filters.maxPrice}
+                          onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                          placeholder="Max"
+                          className="w-1/2 px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Sort */}
+              {/* Sort Section */}
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Sort By</label>
-                <select
-                  value={filters.sort}
-                  onChange={(e) => handleFilterChange('sort', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500"
+                <button
+                  onClick={() => toggleSection('sort')}
+                  className="flex items-center justify-between w-full mb-3"
                 >
-                  <option value="-createdAt">Newest First</option>
-                  <option value="createdAt">Oldest First</option>
-                  <option value="price">Price: Low to High</option>
-                  <option value="-price">Price: High to Low</option>
-                  <option value="name">Name: A to Z</option>
-                  <option value="-name">Name: Z to A</option>
-                </select>
+                  <h3 className="text-sm font-semibold text-gray-900 uppercase">Sort By</h3>
+                  <svg
+                    className={`w-4 h-4 transition-transform ${openSections.sort ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {openSections.sort && (
+                  <div className="space-y-2">
+                    {[
+                      { value: '-createdAt', label: 'Newest First' },
+                      { value: 'price', label: 'Price: Low to High' },
+                      { value: '-price', label: 'Price: High to Low' },
+                      { value: 'name', label: 'Name: A to Z' }
+                    ].map((option) => (
+                      <label
+                        key={option.value}
+                        className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded transition"
+                      >
+                        <input
+                          type="radio"
+                          name="sort-desktop"
+                          checked={filters.sort === option.value}
+                          onChange={() => handleFilterChange('sort', option.value)}
+                          className="w-4 h-4 text-pink-600 focus:ring-pink-500"
+                        />
+                        <span className="text-sm text-gray-700">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Buttons */}
-              <div className="space-y-2">
-                <button
-                  onClick={applyFilters}
-                  className="w-full bg-pink-600 text-white py-2 rounded-lg hover:bg-pink-700 transition font-medium"
-                >
-                  Apply Filters
-                </button>
-                <button
-                  onClick={clearFilters}
-                  className="w-full bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300 transition font-medium"
-                >
-                  Clear All
-                </button>
-              </div>
+              {/* Apply Button */}
+              <button
+                onClick={applyFilters}
+                className="w-full bg-pink-600 text-white py-2.5 rounded-lg hover:bg-pink-700 transition font-medium shadow-sm"
+              >
+                Apply Filters
+              </button>
             </div>
           </aside>
 

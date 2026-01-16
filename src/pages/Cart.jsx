@@ -1,6 +1,7 @@
 import { useMemo, useCallback, memo, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import CartItem from '../components/cart/CartItem';
 
 // Memoized Loading Spinner
@@ -52,7 +53,8 @@ const OrderSummary = memo(({
   tax,
   total,
   onCheckout,
-  onContinueShopping
+  onContinueShopping,
+  isAuthenticated
 }) => (
   <div className="lg:col-span-1">
     <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 sticky top-20">
@@ -91,7 +93,7 @@ const OrderSummary = memo(({
         onClick={onCheckout}
         className="w-full bg-pink-600 text-white py-3 rounded-lg hover:bg-pink-700 transition font-semibold mb-3"
       >
-        Proceed to Checkout
+        {isAuthenticated ? 'Proceed to Checkout' : 'Login to Checkout'}
       </button>
 
       {/* Continue Shopping */}
@@ -128,11 +130,17 @@ OrderSummary.displayName = 'OrderSummary';
 const Cart = () => {
   const navigate = useNavigate();
   const { cart, total, loading } = useCart();
+  const { isAuthenticated } = useAuth();
 
   // Memoize navigation callbacks
   const handleCheckout = useCallback(() => {
-    navigate('/checkout');
-  }, [navigate]);
+    if (isAuthenticated) {
+      navigate('/checkout');
+    } else {
+      // Redirect to login with return URL
+      navigate('/login', { state: { from: { pathname: '/checkout' } } });
+    }
+  }, [navigate, isAuthenticated]);
 
   const handleContinueShopping = useCallback(() => {
     navigate('/products');
@@ -150,17 +158,17 @@ const Cart = () => {
   );
 
   const subtotal = useMemo(
-    () => total.toFixed(2),
+    () => isNaN(total) ? '0.00' : total.toFixed(2),
     [total]
   );
 
   const tax = useMemo(
-    () => (total * 0.1).toFixed(2),
+    () => isNaN(total) ? '0.00' : (total * 0.1).toFixed(2),
     [total]
   );
 
   const totalAmount = useMemo(
-    () => (total * 1.1).toFixed(2),
+    () => isNaN(total) ? '0.00' : (total * 1.1).toFixed(2),
     [total]
   );
 
@@ -175,6 +183,23 @@ const Cart = () => {
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">
           Shopping Bag ({itemCount} {itemCount === 1 ? 'item' : 'items'})
         </h1>
+
+        {/* Guest User Banner */}
+        {!isAuthenticated && !isEmpty && (
+          <div className="mb-6 bg-gradient-to-r from-pink-50 to-purple-50 border-2 border-pink-200 rounded-xl p-4 md:p-6 flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <svg className="w-6 h-6 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 mb-1">Sign in to complete your purchase</h3>
+              <p className="text-sm text-gray-600">
+                Your cart items are saved. Login or create an account to proceed to checkout and place your order.
+              </p>
+            </div>
+          </div>
+        )}
 
         {isEmpty ? (
           <EmptyCart onContinueShopping={handleContinueShopping} />
@@ -195,6 +220,7 @@ const Cart = () => {
               total={totalAmount}
               onCheckout={handleCheckout}
               onContinueShopping={handleContinueShopping}
+              isAuthenticated={isAuthenticated}
             />
           </div>
         )}

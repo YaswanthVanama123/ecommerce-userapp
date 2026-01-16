@@ -13,7 +13,7 @@ const ProductCard = ({ product }) => {
   const imageUrl = product.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image';
   const displayImageUrl = imageError
     ? 'https://via.placeholder.com/300x400?text=Image+Not+Available'
-    : imageUrl;
+    : (imageUrl || 'https://via.placeholder.com/300x400?text=No+Image');
 
   return (
     <Link
