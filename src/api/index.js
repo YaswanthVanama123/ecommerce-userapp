@@ -138,11 +138,15 @@ export const authApi = {
    * No caching - mutation operation
    */
   changePassword: async (passwordData) => {
-    const response = await axiosInstance.put('/auth/password', passwordData, {
+    const response = await axiosInstance.put('/auth/change-password', passwordData, {
       skipCache: true,
       skipRetry: false,
       timeout: 15000
     });
+
+    // Invalidate auth cache after password change
+    invalidateCache.auth();
+
     return response.data;
   }
 };
