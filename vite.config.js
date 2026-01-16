@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import viteCompression from 'vite-plugin-compression'
+import tailwindcss from 'tailwindcss'
+import autoprefixer from 'autoprefixer'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -250,18 +252,12 @@ export default defineConfig({
   },
   // CSS handling
   css: {
-    // CSS modules configuration
-    modules: {
-      localsConvention: 'camelCase',
-      generateScopedName: '[hash:base64:5]',
-    },
-    // PostCSS configuration
+    // PostCSS configuration - explicitly load Tailwind
     postcss: {
       plugins: [
-        // Tailwind will be loaded from postcss.config.js if present
+        tailwindcss,
+        autoprefixer,
       ],
     },
-    // Enable CSS preprocessing optimizations
-    preprocessorOptions: {},
   },
 })

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tailwind CSS Test</title>
+    <!-- This will be processed by Vite -->
+    <style>
+        @tailwind base;
+        @tailwind components;
+        @tailwind utilities;
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="max-w-2xl mx-auto p-8">
+        <!-- Test Card -->
+        <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+            <h1 class="text-4xl font-bold text-blue-600 mb-4">
+                Tailwind CSS Test Page
+            </h1>
+            <p class="text-gray-600 mb-6">
+                If you can see this styled with colors, shadows, and spacing - Tailwind is working!
+            </p>
+
+            <!-- Gradient Test -->
+            <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-6 rounded-lg mb-6">
+                <h2 class="text-2xl font-bold mb-2">Gradient Test</h2>
+                <p>This should have a purple-to-pink gradient background</p>
+            </div>
+
+            <!-- Button Tests -->
+            <div class="space-y-4 mb-6">
+                <button class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg w-full transition">
+                    Blue Button (Hover Me)
+                </button>
+                <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg w-full transition">
+                    Green Button (Hover Me)
+                </button>
+                <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg w-full transition">
+                    Red Button (Hover Me)
+                </button>
+            </div>
+
+            <!-- Grid Test -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-blue-100 p-4 rounded text-center">
+                    <div class="text-2xl mb-2">📦</div>
+                    <div class="font-semibold">Box 1</div>
+                </div>
+                <div class="bg-green-100 p-4 rounded text-center">
+                    <div class="text-2xl mb-2">🎨</div>
+                    <div class="font-semibold">Box 2</div>
+                </div>
+                <div class="bg-purple-100 p-4 rounded text-center">
+                    <div class="text-2xl mb-2">⚡</div>
+                    <div class="font-semibold">Box 3</div>
+                </div>
+            </div>
+
+            <!-- Success/Failure Indicators -->
+            <div class="border-t pt-6">
+                <h3 class="text-xl font-bold mb-4">What You Should See:</h3>
+                <ul class="space-y-2 text-sm">
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2">✓</span>
+                        <span><strong>White card</strong> with shadow on gray background</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2">✓</span>
+                        <span><strong>Blue heading</strong> "Tailwind CSS Test Page"</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2">✓</span>
+                        <span><strong>Purple-to-pink gradient</strong> box</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2">✓</span>
+                        <span><strong>Three colored buttons</strong> (blue, green, red) that change color on hover</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="text-green-500 mr-2">✓</span>
+                        <span><strong>Three boxes in a row</strong> with light backgrounds (blue, green, purple)</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="mt-6 p-4 bg-yellow-50 border-l-4 border-yellow-400">
+                <p class="text-yellow-800 font-semibold">
+                    ⚠️ If this page looks unstyled (just black text on white), Tailwind is NOT processing.
+                </p>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 class="text-lg font-bold text-blue-900 mb-3">Testing Instructions:</h3>
+            <ol class="list-decimal list-inside space-y-2 text-blue-800 text-sm">
+                <li>Save this file as <code class="bg-blue-100 px-2 py-1 rounded">test-tailwind.html</code> in your project root</li>
+                <li>Make sure your dev server is running (<code class="bg-blue-100 px-2 py-1 rounded">npm run dev</code>)</li>
+                <li>Navigate to <code class="bg-blue-100 px-2 py-1 rounded">http://localhost:5173/test-tailwind.html</code></li>
+                <li>If styled correctly, Tailwind is working!</li>
+                <li>If not styled, check browser console for errors</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>
