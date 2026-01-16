@@ -26,6 +26,9 @@ const Login = lazy(() =>
 const Register = lazy(() =>
   import(/* webpackChunkName: "page-register" */ './pages/Register')
 );
+const ForgotPassword = lazy(() =>
+  import(/* webpackChunkName: "page-forgot-password" */ './pages/ForgotPassword')
+);
 const ProductListing = lazy(() =>
   import(/* webpackChunkName: "page-product-listing" */ './pages/ProductListing')
 );
@@ -72,6 +75,7 @@ function AppContent() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/products" element={<ProductListing />} />
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route

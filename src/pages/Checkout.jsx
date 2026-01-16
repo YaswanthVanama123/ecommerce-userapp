@@ -15,7 +15,8 @@ const FormField = memo(({
   errors,
   validation,
   defaultValue,
-  className = 'md:col-span-1'
+  className = 'md:col-span-1',
+  placeholder
 }) => (
   <div className={className}>
     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -25,9 +26,10 @@ const FormField = memo(({
       type={type}
       {...register(name, validation)}
       defaultValue={defaultValue}
-      className={`w-full px-3 py-2 border ${
+      placeholder={placeholder}
+      className={`w-full px-3 py-2.5 border ${
         errors[name] ? 'border-red-500' : 'border-gray-300'
-      } rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+      } rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500`}
     />
     {errors[name] && (
       <p className="mt-1 text-sm text-red-600">{errors[name].message}</p>
@@ -45,18 +47,20 @@ const PaymentOption = memo(({
   checked,
   onChange
 }) => (
-  <label className="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+  <label className={`flex items-center p-4 border-2 rounded-lg cursor-pointer transition ${
+    checked ? 'border-pink-600 bg-pink-50' : 'border-gray-300 hover:bg-gray-50'
+  }`}>
     <input
       type="radio"
       name="paymentMethod"
       value={value}
       checked={checked}
       onChange={onChange}
-      className="mr-3"
+      className="mr-3 text-pink-600 focus:ring-pink-500"
     />
     <div className="flex items-center">
       {icon}
-      <span className="font-medium">{label}</span>
+      <span className="font-medium text-gray-900">{label}</span>
     </div>
   </label>
 ));
@@ -70,18 +74,18 @@ const OrderItem = memo(({ item }) => (
       src={item.product.images?.[0] || 'https://via.placeholder.com/60x60'}
       alt={item.product.name}
       loading="lazy"
-      className="w-16 h-16 object-cover rounded"
+      className="w-14 h-14 md:w-16 md:h-16 object-cover rounded"
     />
-    <div className="flex-grow">
-      <p className="text-sm font-medium text-gray-900">
+    <div className="flex-grow min-w-0">
+      <p className="text-xs md:text-sm font-medium text-gray-900 line-clamp-2">
         {item.product.name}
       </p>
       <p className="text-xs text-gray-600">
-        Qty: {item.quantity} x ${item.price.toFixed(2)}
+        Qty: {item.quantity} × ₹{Math.round(item.price)}
       </p>
     </div>
     <p className="text-sm font-semibold text-gray-900">
-      ${item.subtotal.toFixed(2)}
+      ₹{Math.round(item.subtotal)}
     </p>
   </div>
 ));
@@ -97,8 +101,8 @@ const OrderSummary = memo(({
   isProcessing
 }) => (
   <div className="lg:col-span-1">
-    <div className="bg-white rounded-lg shadow-md p-6 sticky top-20">
-      <h2 className="text-xl font-bold text-gray-900 mb-4">Order Summary</h2>
+    <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 sticky top-20">
+      <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">Order Summary</h2>
 
       {/* Cart Items */}
       <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
@@ -108,33 +112,36 @@ const OrderSummary = memo(({
       </div>
 
       {/* Price Breakdown */}
-      <div className="border-t pt-4 space-y-2">
+      <div className="border-t pt-4 space-y-2 text-sm md:text-base">
         <div className="flex justify-between text-gray-600">
-          <span>Subtotal</span>
-          <span>${subtotal}</span>
+          <span>Price ({items.length} {items.length === 1 ? 'item' : 'items'})</span>
+          <span>₹{subtotal}</span>
         </div>
         <div className="flex justify-between text-gray-600">
-          <span>Shipping</span>
-          <span className="text-green-600">Free</span>
+          <span>Delivery Charges</span>
+          <span className="text-green-600 font-medium">Free</span>
         </div>
         <div className="flex justify-between text-gray-600">
           <span>Tax (10%)</span>
-          <span>${tax}</span>
+          <span>₹{tax}</span>
         </div>
-        <div className="border-t pt-2 flex justify-between text-lg font-bold text-gray-900">
-          <span>Total</span>
-          <span>${total}</span>
+        <div className="border-t pt-2 flex justify-between text-base md:text-lg font-bold text-gray-900">
+          <span>Total Amount</span>
+          <span>₹{total}</span>
         </div>
+        <p className="text-xs md:text-sm text-green-600">
+          You will save ₹{(parseFloat(subtotal) * 0.1).toFixed(0)} on this order
+        </p>
       </div>
 
       {/* Place Order Button */}
       <button
         type="submit"
         disabled={isProcessing}
-        className={`w-full mt-6 py-3 rounded-lg font-semibold text-white ${
+        className={`w-full mt-6 py-3 rounded-lg font-semibold text-white transition ${
           isProcessing
-            ? 'bg-blue-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700'
+            ? 'bg-pink-400 cursor-not-allowed'
+            : 'bg-pink-600 hover:bg-pink-700'
         }`}
       >
         {isProcessing ? (
@@ -159,10 +166,10 @@ const OrderSummary = memo(({
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
           />
         </svg>
-        <span>Secure checkout with SSL encryption</span>
+        <span>Safe and Secure Payments</span>
       </div>
     </div>
   </div>
@@ -218,10 +225,10 @@ const Checkout = () => {
     city: { required: 'City is required' },
     state: { required: 'State is required' },
     zipCode: {
-      required: 'Zip code is required',
+      required: 'PIN code is required',
       pattern: {
-        value: /^[0-9]{5,6}$/,
-        message: 'Invalid zip code'
+        value: /^[0-9]{6}$/,
+        message: 'Invalid PIN code (6 digits)'
       }
     },
     country: { required: 'Country is required' }
@@ -231,10 +238,10 @@ const Checkout = () => {
   const paymentOptions = useMemo(() => [
     {
       value: 'card',
-      label: 'Credit/Debit Card',
+      label: 'Card Payment',
       icon: (
         <svg
-          className="w-8 h-8 mr-3 text-blue-600"
+          className="w-6 h-6 md:w-8 md:h-8 mr-3 text-pink-600"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -249,11 +256,30 @@ const Checkout = () => {
       )
     },
     {
+      value: 'upi',
+      label: 'UPI Payment',
+      icon: (
+        <svg
+          className="w-6 h-6 md:w-8 md:h-8 mr-3 text-purple-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+          />
+        </svg>
+      )
+    },
+    {
       value: 'cash',
       label: 'Cash on Delivery',
       icon: (
         <svg
-          className="w-8 h-8 mr-3 text-green-600"
+          className="w-6 h-6 md:w-8 md:h-8 mr-3 text-green-600"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -320,128 +346,139 @@ const Checkout = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Checkout</h1>
+    <div className="w-full min-h-screen bg-gray-50 pb-20 lg:pb-0">
+      <div className="w-full px-4 max-w-7xl mx-auto py-6 md:py-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-6 md:mb-8">Checkout</h1>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Checkout Form */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Shipping Address */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Shipping Address
-              </h2>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+            {/* Checkout Form */}
+            <div className="lg:col-span-2 space-y-4 md:space-y-6">
+              {/* Shipping Address */}
+              <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
+                <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">
+                  Delivery Address
+                </h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  label="Full Name"
-                  name="fullName"
-                  register={register}
-                  errors={errors}
-                  validation={validationRules.fullName}
-                  className="md:col-span-2"
-                />
-
-                <FormField
-                  label="Email"
-                  name="email"
-                  type="email"
-                  register={register}
-                  errors={errors}
-                  validation={validationRules.email}
-                />
-
-                <FormField
-                  label="Phone"
-                  name="phone"
-                  type="tel"
-                  register={register}
-                  errors={errors}
-                  validation={validationRules.phone}
-                />
-
-                <FormField
-                  label="Address Line 1"
-                  name="addressLine1"
-                  register={register}
-                  errors={errors}
-                  validation={validationRules.addressLine1}
-                  className="md:col-span-2"
-                />
-
-                <FormField
-                  label="Address Line 2 (Optional)"
-                  name="addressLine2"
-                  register={register}
-                  errors={errors}
-                  className="md:col-span-2"
-                />
-
-                <FormField
-                  label="City"
-                  name="city"
-                  register={register}
-                  errors={errors}
-                  validation={validationRules.city}
-                />
-
-                <FormField
-                  label="State"
-                  name="state"
-                  register={register}
-                  errors={errors}
-                  validation={validationRules.state}
-                />
-
-                <FormField
-                  label="Zip Code"
-                  name="zipCode"
-                  register={register}
-                  errors={errors}
-                  validation={validationRules.zipCode}
-                />
-
-                <FormField
-                  label="Country"
-                  name="country"
-                  register={register}
-                  errors={errors}
-                  validation={validationRules.country}
-                  defaultValue="United States"
-                />
-              </div>
-            </div>
-
-            {/* Payment Method */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Payment Method</h2>
-
-              <div className="space-y-3">
-                {paymentOptions.map((option) => (
-                  <PaymentOption
-                    key={option.value}
-                    value={option.value}
-                    label={option.label}
-                    icon={option.icon}
-                    checked={paymentMethod === option.value}
-                    onChange={handlePaymentMethodChange}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    label="Full Name *"
+                    name="fullName"
+                    register={register}
+                    errors={errors}
+                    validation={validationRules.fullName}
+                    className="md:col-span-2"
+                    placeholder="John Doe"
                   />
-                ))}
+
+                  <FormField
+                    label="Email *"
+                    name="email"
+                    type="email"
+                    register={register}
+                    errors={errors}
+                    validation={validationRules.email}
+                    placeholder="john@example.com"
+                  />
+
+                  <FormField
+                    label="Phone *"
+                    name="phone"
+                    type="tel"
+                    register={register}
+                    errors={errors}
+                    validation={validationRules.phone}
+                    placeholder="9876543210"
+                  />
+
+                  <FormField
+                    label="Address Line 1 *"
+                    name="addressLine1"
+                    register={register}
+                    errors={errors}
+                    validation={validationRules.addressLine1}
+                    className="md:col-span-2"
+                    placeholder="House No., Building Name"
+                  />
+
+                  <FormField
+                    label="Address Line 2 (Optional)"
+                    name="addressLine2"
+                    register={register}
+                    errors={errors}
+                    className="md:col-span-2"
+                    placeholder="Road Name, Area, Colony"
+                  />
+
+                  <FormField
+                    label="City *"
+                    name="city"
+                    register={register}
+                    errors={errors}
+                    validation={validationRules.city}
+                    placeholder="Mumbai"
+                  />
+
+                  <FormField
+                    label="State *"
+                    name="state"
+                    register={register}
+                    errors={errors}
+                    validation={validationRules.state}
+                    placeholder="Maharashtra"
+                  />
+
+                  <FormField
+                    label="PIN Code *"
+                    name="zipCode"
+                    register={register}
+                    errors={errors}
+                    validation={validationRules.zipCode}
+                    placeholder="400001"
+                  />
+
+                  <FormField
+                    label="Country *"
+                    name="country"
+                    register={register}
+                    errors={errors}
+                    validation={validationRules.country}
+                    defaultValue="India"
+                    placeholder="India"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Method */}
+              <div className="bg-white rounded-lg shadow-sm p-4 md:p-6">
+                <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-4">Payment Method</h2>
+
+                <div className="space-y-3">
+                  {paymentOptions.map((option) => (
+                    <PaymentOption
+                      key={option.value}
+                      value={option.value}
+                      label={option.label}
+                      icon={option.icon}
+                      checked={paymentMethod === option.value}
+                      onChange={handlePaymentMethodChange}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Order Summary */}
-          <OrderSummary
-            items={cart.items}
-            subtotal={subtotal}
-            tax={tax}
-            total={totalAmount}
-            isProcessing={isProcessing}
-          />
-        </div>
-      </form>
+            {/* Order Summary */}
+            <OrderSummary
+              items={cart.items}
+              subtotal={subtotal}
+              tax={tax}
+              total={totalAmount}
+              isProcessing={isProcessing}
+            />
+          </div>
+        </form>
+      </div>
     </div>
   );
 };
