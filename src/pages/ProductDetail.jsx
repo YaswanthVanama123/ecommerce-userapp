@@ -5,6 +5,7 @@ import { useCartActions } from '../context/CartContext';
 import { useWishlistActions } from '../context/WishlistContext';
 import { useAuth, useAuthActions } from '../context/AuthContext';
 import { toast } from 'react-toastify';
+import PincodeChecker from '../components/PincodeChecker';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -549,10 +550,12 @@ const ProductDetail = () => {
                 <span className="font-medium text-gray-900">{product.material}</span>
               </div>
             )}
-            <div className="flex items-center text-sm">
-              <span className="text-gray-500 w-24">Delivery</span>
-              <span className="font-medium text-green-600">Free delivery available</span>
-            </div>
+          </div>
+
+          {/* Delivery Check */}
+          <div className="mb-6 pb-6 border-b">
+            <h3 className="text-sm font-semibold text-gray-900 mb-3">Check Delivery</h3>
+            <PincodeChecker productId={product._id} />
           </div>
 
           {/* Desktop Action Buttons */}

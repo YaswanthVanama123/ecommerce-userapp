@@ -1100,6 +1100,57 @@ export const bannerApi = {
 };
 
 // ============================================================================
+// Pincode API
+// ============================================================================
+
+export const pincodeApi = {
+  /**
+   * Check pincode serviceability
+   * Short-term caching (1 minute) - pincode data doesn't change frequently
+   */
+  checkPincodeServiceability: async (pincode, options = {}) => {
+    if (!pincode) {
+      throw new Error('Pincode is required');
+    }
+
+    const response = await axiosInstance.post('/api/pincode/check',
+      { pincode },
+      {
+        cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+        skipCache: options.skipCache || false,
+        timeout: 15000
+      }
+    );
+
+    return response.data;
+  },
+
+  /**
+   * Check product delivery availability for a pincode
+   * Short-term caching (1 minute)
+   */
+  checkProductDelivery: async (pincode, productId, options = {}) => {
+    if (!pincode) {
+      throw new Error('Pincode is required');
+    }
+    if (!productId) {
+      throw new Error('Product ID is required');
+    }
+
+    const response = await axiosInstance.post('/api/pincode/check-product',
+      { pincode, productId },
+      {
+        cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+        skipCache: options.skipCache || false,
+        timeout: 15000
+      }
+    );
+
+    return response.data;
+  }
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -1181,6 +1232,7 @@ export default {
   address: addressApi,
   notification: notificationApi,
   banner: bannerApi,
+  pincode: pincodeApi,
   utils: {
     batchFetch,
     prefetch,
