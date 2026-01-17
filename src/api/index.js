@@ -184,6 +184,19 @@ export const productApi = {
   },
 
   /**
+   * Get trending products
+   * Long-term caching (15 minutes)
+   */
+  getTrendingProducts: async (options = {}) => {
+    const response = await axiosInstance.get('/products/trending', {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.LONG,
+      skipCache: options.skipCache || false,
+      timeout: 20000
+    });
+    return response.data;
+  },
+
+  /**
    * Get product by ID
    * Medium-term caching (5 minutes)
    */
@@ -265,6 +278,147 @@ export const productApi = {
       skipCache: options.skipCache || false,
       timeout: 15000
     });
+    return response.data;
+  }
+};
+
+// ============================================================================
+// Review API
+// ============================================================================
+
+export const reviewApi = {
+  /**
+   * Get reviews for a product
+   * Short-term caching (1 minute)
+   */
+  getReviews: async (productId, params = {}, options = {}) => {
+    if (!productId) {
+      throw new Error('Product ID is required');
+    }
+
+    const response = await axiosInstance.get(`/products/${productId}/reviews`, {
+      params,
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get review statistics for a product
+   * Short-term caching (1 minute)
+   */
+  getReviewStats: async (productId, options = {}) => {
+    if (!productId) {
+      throw new Error('Product ID is required');
+    }
+
+    const response = await axiosInstance.get(`/products/${productId}/reviews/stats`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Submit a review for a product
+   * No caching - mutation operation
+   */
+  submitReview: async (productId, reviewData) => {
+    if (!productId) {
+      throw new Error('Product ID is required');
+    }
+    if (!reviewData || !reviewData.rating) {
+      throw new Error('Rating is required');
+    }
+
+    const response = await axiosInstance.post(`/products/${productId}/reviews`, reviewData, {
+      skipCache: true,
+      timeout: 15000
+    });
+
+    // Invalidate product and review cache
+    invalidateCache.products();
+
+    return response.data;
+  },
+
+  /**
+   * Update a review
+   * No caching - mutation operation
+   */
+  updateReview: async (productId, reviewId, reviewData) => {
+    if (!productId || !reviewId) {
+      throw new Error('Product ID and Review ID are required');
+    }
+
+    const response = await axiosInstance.put(`/products/${productId}/reviews/${reviewId}`, reviewData, {
+      skipCache: true,
+      timeout: 15000
+    });
+
+    // Invalidate product and review cache
+    invalidateCache.products();
+
+    return response.data;
+  },
+
+  /**
+   * Delete a review
+   * No caching - mutation operation
+   */
+  deleteReview: async (productId, reviewId) => {
+    if (!productId || !reviewId) {
+      throw new Error('Product ID and Review ID are required');
+    }
+
+    const response = await axiosInstance.delete(`/products/${productId}/reviews/${reviewId}`, {
+      skipCache: true,
+      timeout: 10000
+    });
+
+    // Invalidate product and review cache
+    invalidateCache.products();
+
+    return response.data;
+  },
+
+  /**
+   * Mark a review as helpful
+   * No caching - mutation operation
+   */
+  markReviewHelpful: async (productId, reviewId) => {
+    if (!productId || !reviewId) {
+      throw new Error('Product ID and Review ID are required');
+    }
+
+    const response = await axiosInstance.post(`/products/${productId}/reviews/${reviewId}/helpful`, null, {
+      skipCache: true,
+      timeout: 10000
+    });
+
+    return response.data;
+  },
+
+  /**
+   * Report a review
+   * No caching - mutation operation
+   */
+  reportReview: async (productId, reviewId, reason) => {
+    if (!productId || !reviewId) {
+      throw new Error('Product ID and Review ID are required');
+    }
+
+    const response = await axiosInstance.post(`/products/${productId}/reviews/${reviewId}/report`,
+      { reason },
+      {
+        skipCache: true,
+        timeout: 10000
+      }
+    );
+
     return response.data;
   }
 };
@@ -811,6 +965,141 @@ export const notificationApi = {
 };
 
 // ============================================================================
+// Banner API
+// ============================================================================
+
+export const bannerApi = {
+  /**
+   * Get active banners by position
+   * Medium-term caching (10 minutes) - banners don't change frequently
+   *
+   * @param {string} position - Banner position ('hero', 'sidebar', 'carousel', 'grid')
+   * @param {object} options - Additional options
+   * @returns {Promise} - Promise resolving to banner data
+   */
+  getActiveBanners: async (position = 'all', options = {}) => {
+    const response = await axiosInstance.get('/banners/active', {
+      params: { position },
+      cacheTTL: 600000, // 10 minutes TTL
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get all banners (admin)
+   * Short-term caching (1 minute)
+   */
+  getAllBanners: async (params = {}, options = {}) => {
+    const response = await axiosInstance.get('/banners', {
+      params,
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get banner by ID
+   * Medium-term caching (5 minutes)
+   */
+  getBannerById: async (id, options = {}) => {
+    if (!id) {
+      throw new Error('Banner ID is required');
+    }
+
+    const response = await axiosInstance.get(`/banners/${id}`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.MEDIUM,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Create new banner (admin)
+   * No caching - mutation operation
+   */
+  createBanner: async (bannerData) => {
+    if (!bannerData) {
+      throw new Error('Banner data is required');
+    }
+
+    const response = await axiosInstance.post('/banners', bannerData, {
+      skipCache: true,
+      timeout: 20000
+    });
+
+    // Invalidate banner cache
+    cacheManager.invalidate('/banners');
+
+    return response.data;
+  },
+
+  /**
+   * Update banner (admin)
+   * No caching - mutation operation
+   */
+  updateBanner: async (id, bannerData) => {
+    if (!id) {
+      throw new Error('Banner ID is required');
+    }
+
+    const response = await axiosInstance.put(`/banners/${id}`, bannerData, {
+      skipCache: true,
+      timeout: 20000
+    });
+
+    // Invalidate banner cache
+    cacheManager.invalidate('/banners');
+
+    return response.data;
+  },
+
+  /**
+   * Delete banner (admin)
+   * No caching - mutation operation
+   */
+  deleteBanner: async (id) => {
+    if (!id) {
+      throw new Error('Banner ID is required');
+    }
+
+    const response = await axiosInstance.delete(`/banners/${id}`, {
+      skipCache: true,
+      timeout: 10000
+    });
+
+    // Invalidate banner cache
+    cacheManager.invalidate('/banners');
+
+    return response.data;
+  },
+
+  /**
+   * Toggle banner active status (admin)
+   * No caching - mutation operation
+   */
+  toggleBannerStatus: async (id) => {
+    if (!id) {
+      throw new Error('Banner ID is required');
+    }
+
+    const response = await axiosInstance.patch(`/banners/${id}/toggle`, null, {
+      skipCache: true,
+      timeout: 10000
+    });
+
+    // Invalidate banner cache
+    cacheManager.invalidate('/banners');
+
+    return response.data;
+  }
+};
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -846,7 +1135,8 @@ export const prefetch = {
     await Promise.all([
       productApi.getProductById(productId),
       productApi.getRelatedProducts(productId),
-      productApi.getProductReviews(productId)
+      reviewApi.getReviews(productId, { page: 1, limit: 10 }),
+      reviewApi.getReviewStats(productId)
     ]);
   },
 
@@ -883,12 +1173,14 @@ export { axiosInstance };
 export default {
   auth: authApi,
   product: productApi,
+  review: reviewApi,
   cart: cartApi,
   order: orderApi,
   payment: paymentApi,
   wishlist: wishlistApi,
   address: addressApi,
   notification: notificationApi,
+  banner: bannerApi,
   utils: {
     batchFetch,
     prefetch,

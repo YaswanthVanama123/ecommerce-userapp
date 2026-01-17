@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Suspense, lazy, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -29,14 +30,17 @@ const Register = lazy(() =>
 const ForgotPassword = lazy(() =>
   import(/* webpackChunkName: "page-forgot-password" */ './pages/ForgotPassword')
 );
-const ProductListing = lazy(() =>
-  import(/* webpackChunkName: "page-product-listing" */ './pages/ProductListing')
+const Products = lazy(() =>
+  import(/* webpackChunkName: "page-products" */ './pages/Products')
 );
 const ProductDetail = lazy(() =>
   import(/* webpackChunkName: "page-product-detail" */ './pages/ProductDetail')
 );
 const Cart = lazy(() =>
   import(/* webpackChunkName: "page-cart" */ './pages/Cart')
+);
+const Wishlist = lazy(() =>
+  import(/* webpackChunkName: "page-wishlist" */ './pages/Wishlist')
 );
 const Checkout = lazy(() =>
   import(/* webpackChunkName: "page-checkout" */ './pages/Checkout')
@@ -78,9 +82,10 @@ function AppContent() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/products" element={<ProductListing />} />
+              <Route path="/products" element={<Products />} />
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/cart" element={<Cart />} />
+              <Route path="/wishlist" element={<Wishlist />} />
               <Route
                 path="/checkout"
                 element={
@@ -120,8 +125,10 @@ function App() {
       <BrowserRouter>
         <AuthProvider>
           <CartProvider>
-            <AppContent />
-            <ToastContainer position="top-right" autoClose={3000} />
+            <WishlistProvider>
+              <AppContent />
+              <ToastContainer position="top-right" autoClose={3000} />
+            </WishlistProvider>
           </CartProvider>
         </AuthProvider>
       </BrowserRouter>
