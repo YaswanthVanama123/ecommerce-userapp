@@ -279,6 +279,90 @@ export const productApi = {
       timeout: 15000
     });
     return response.data;
+  },
+
+  /**
+   * Get similar products
+   * Long-term caching (15 minutes)
+   */
+  getSimilarProducts: async (productId, limit = 8, options = {}) => {
+    const response = await axiosInstance.get(`/products/${productId}/recommendations`, {
+      params: { limit },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.LONG,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get frequently bought together products
+   * Long-term caching (15 minutes)
+   */
+  getFrequentlyBoughtTogether: async (productId, limit = 6, options = {}) => {
+    const response = await axiosInstance.get(`/products/${productId}/frequently-bought`, {
+      params: { limit },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.LONG,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get personalized product recommendations
+   * Medium-term caching (5 minutes)
+   */
+  getRecommendations: async (limit = 10, options = {}) => {
+    const response = await axiosInstance.get('/products/recommended', {
+      params: { limit },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.MEDIUM,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get trending products now
+   * Long-term caching (15 minutes)
+   */
+  getTrendingNow: async (limit = 10, options = {}) => {
+    const response = await axiosInstance.get('/products/trending-now', {
+      params: { limit },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.LONG,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get new arrivals
+   * Long-term caching (15 minutes)
+   */
+  getNewArrivals: async (limit = 10, options = {}) => {
+    const response = await axiosInstance.get('/products/new-arrivals', {
+      params: { limit },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.LONG,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get best sellers
+   * Long-term caching (15 minutes)
+   */
+  getBestSellers: async (limit = 10, options = {}) => {
+    const response = await axiosInstance.get('/products/best-sellers', {
+      params: { limit },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.LONG,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
   }
 };
 
@@ -1261,69 +1345,7 @@ export const addressApi = {
 // Notification API
 // ============================================================================
 
-export const notificationApi = {
-  /**
-   * Get notifications
-   * Short-term caching (1 minute) - notifications update frequently
-   */
-  getNotifications: async (params = {}, options = {}) => {
-    const response = await axiosInstance.get('/notifications', {
-      params,
-      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
-      skipCache: options.skipCache || false,
-      timeout: 15000
-    });
-    return response.data;
-  },
-
-  /**
-   * Mark notification as read
-   * No caching - mutation operation
-   */
-  markAsRead: async (id) => {
-    const response = await axiosInstance.put(`/notifications/${id}/read`, null, {
-      skipCache: true,
-      timeout: 10000
-    });
-
-    // Invalidate notification cache
-    cacheManager.invalidate('/notifications');
-
-    return response.data;
-  },
-
-  /**
-   * Mark all notifications as read
-   * No caching - mutation operation
-   */
-  markAllAsRead: async () => {
-    const response = await axiosInstance.put('/notifications/read-all', null, {
-      skipCache: true,
-      timeout: 10000
-    });
-
-    // Invalidate notification cache
-    cacheManager.invalidate('/notifications');
-
-    return response.data;
-  },
-
-  /**
-   * Delete notification
-   * No caching - mutation operation
-   */
-  deleteNotification: async (id) => {
-    const response = await axiosInstance.delete(`/notifications/${id}`, {
-      skipCache: true,
-      timeout: 10000
-    });
-
-    // Invalidate notification cache
-    cacheManager.invalidate('/notifications');
-
-    return response.data;
-  }
-};
+export { notificationApi } from './notificationApi';
 
 // ============================================================================
 // Banner API
@@ -1917,7 +1939,6 @@ export default {
   payment: paymentApi,
   wishlist: wishlistApi,
   address: addressApi,
-  notification: notificationApi,
   banner: bannerApi,
   pincode: pincodeApi,
   shipping: shippingApi,

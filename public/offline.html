@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - E-commerce Store</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: white;
+    }
+
+    .container {
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .icon-container {
+      margin-bottom: 2rem;
+      animation: bounce 2s ease-in-out infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(-20px);
+      }
+    }
+
+    .icon {
+      width: 120px;
+      height: 120px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 60px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      margin-bottom: 2rem;
+      opacity: 0.95;
+      line-height: 1.6;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-bottom: 3rem;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 32px;
+      background: white;
+      color: #667eea;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      border: none;
+      cursor: pointer;
+      min-width: 150px;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .button:active {
+      transform: translateY(0);
+    }
+
+    .button-secondary {
+      background: transparent;
+      color: white;
+      border: 2px solid white;
+    }
+
+    .button-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .features {
+      margin-top: 3rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+    }
+
+    .features-title {
+      font-size: 1.3rem;
+      margin-bottom: 1.5rem;
+      font-weight: 600;
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 1rem;
+      text-align: left;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .feature:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateX(5px);
+    }
+
+    .feature-icon {
+      font-size: 1.8rem;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .feature-text {
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      font-size: 0.9rem;
+      margin-bottom: 2rem;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background: #ff6b6b;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+      }
+    }
+
+    .connection-check {
+      display: none;
+      margin-top: 2rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      font-size: 0.9rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 0.5rem;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 640px) {
+      h1 {
+        font-size: 2rem;
+      }
+
+      .subtitle {
+        font-size: 1rem;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      .features {
+        padding: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="status-indicator">
+      <span class="status-dot"></span>
+      <span>No Internet Connection</span>
+    </div>
+
+    <div class="icon-container">
+      <div class="icon">📡</div>
+    </div>
+
+    <h1>You're Offline</h1>
+    <p class="subtitle">
+      Looks like you've lost your internet connection. Don't worry – we've saved some things for you to browse while you wait!
+    </p>
+
+    <div class="button-group">
+      <button class="button" onclick="tryReconnect()">Try Again</button>
+      <a href="/" class="button button-secondary">Go Home</a>
+    </div>
+
+    <div class="connection-check" id="connectionCheck">
+      Checking connection<span class="spinner"></span>
+    </div>
+
+    <div class="features">
+      <h2 class="features-title">What's Still Available</h2>
+      <div class="feature-list">
+        <div class="feature">
+          <span class="feature-icon">🛒</span>
+          <div class="feature-text">
+            <strong>Your Cart is Safe</strong><br>
+            All items are saved locally and will sync when you're back online
+          </div>
+        </div>
+
+        <div class="feature">
+          <span class="feature-icon">💾</span>
+          <div class="feature-text">
+            <strong>Cached Content</strong><br>
+            Previously viewed products and pages are still accessible
+          </div>
+        </div>
+
+        <div class="feature">
+          <span class="feature-icon">🔄</span>
+          <div class="feature-text">
+            <strong>Auto-Sync</strong><br>
+            Changes will automatically sync when connection is restored
+          </div>
+        </div>
+
+        <div class="feature">
+          <span class="feature-icon">❤️</span>
+          <div class="feature-text">
+            <strong>Wishlist Available</strong><br>
+            Your wishlist is saved and you can still browse saved items
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check online status
+    function updateOnlineStatus() {
+      if (navigator.onLine) {
+        // Automatically redirect to home when online
+        window.location.href = '/';
+      }
+    }
+
+    // Try to reconnect
+    function tryReconnect() {
+      const checkElement = document.getElementById('connectionCheck');
+      checkElement.style.display = 'block';
+
+      // Check if we can reach the server
+      fetch('/', { method: 'HEAD', cache: 'no-cache' })
+        .then(() => {
+          // Connection restored
+          checkElement.innerHTML = '✅ Connection restored! Redirecting...';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1000);
+        })
+        .catch(() => {
+          // Still offline
+          checkElement.innerHTML = '❌ Still offline. Please check your connection.';
+          setTimeout(() => {
+            checkElement.style.display = 'none';
+          }, 3000);
+        });
+    }
+
+    // Listen for online event
+    window.addEventListener('online', updateOnlineStatus);
+
+    // Periodic connection check
+    setInterval(() => {
+      if (navigator.onLine) {
+        updateOnlineStatus();
+      }
+    }, 5000); // Check every 5 seconds
+
+    // Check immediately on load
+    updateOnlineStatus();
+
+    // Service Worker communication
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'BACK_ONLINE') {
+          updateOnlineStatus();
+        }
+      });
+    }
+  </script>
+</body>
+</html>

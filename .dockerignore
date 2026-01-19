@@ -1,18 +1,58 @@
-node_modules
+# Dependencies
+node_modules/
 npm-debug.log
-.git
-.gitignore
-README.md
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Environment files
+.env
 .env.local
 .env.*.local
-.vscode
-.idea
+.env.production
+.env.development
+
+# Testing
+coverage/
+.nyc_output/
+**/*.test.js
+**/*.spec.js
+**/*.test.jsx
+**/*.spec.jsx
+
+# IDE and editor files
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
 .DS_Store
-dist
-build
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+CHANGELOG.md
+*.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Build artifacts (will be created during build)
+dist/
+build/
+
+# Development files
+.prettierrc
+.eslintrc*
+
+# OS files
+Thumbs.db
 .cache
-coverage
-.turbo
+
+# Vite
+.vite/

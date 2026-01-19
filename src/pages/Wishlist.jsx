@@ -15,6 +15,10 @@ const Wishlist = () => {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [removingItems, setRemovingItems] = useState(new Set());
   const [addingToCart, setAddingToCart] = useState(new Set());
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [bulkMoving, setBulkMoving] = useState(false);
 
   // Fetch full product details for wishlist items
   useEffect(() => {
@@ -137,6 +141,98 @@ const Wishlist = () => {
     return product.price;
   };
 
+  // Select/deselect item
+  const toggleSelectItem = (productId) => {
+    setSelectedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  };
+
+  // Select/deselect all
+  const toggleSelectAll = () => {
+    if (selectedItems.size === products.length) {
+      setSelectedItems(new Set());
+    } else {
+      setSelectedItems(new Set(products.map(p => p._id)));
+    }
+  };
+
+  // Move selected items to cart
+  const handleBulkMoveToCart = async () => {
+    if (selectedItems.size === 0) {
+      toast.info('Please select items to move');
+      return;
+    }
+
+    setBulkMoving(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const productId of selectedItems) {
+      try {
+        const result = await addToCart(productId, 1);
+        if (result.success) {
+          await removeFromWishlist(productId);
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (error) {
+        failCount++;
+      }
+    }
+
+    setBulkMoving(false);
+    setSelectedItems(new Set());
+
+    if (successCount > 0) {
+      toast.success(`${successCount} item(s) moved to cart`);
+    }
+    if (failCount > 0) {
+      toast.error(`Failed to move ${failCount} item(s)`);
+    }
+  };
+
+  // Share wishlist
+  const handleShareWishlist = () => {
+    const link = `${window.location.origin}/wishlist?shared=${isAuthenticated ? 'user' : 'guest'}`;
+    setShareLink(link);
+    setShowShareModal(true);
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(link).then(() => {
+      toast.success('Link copied to clipboard!');
+    }).catch(() => {
+      toast.info('Use the link below to share');
+    });
+  };
+
+  // Request price drop alert
+  const handlePriceAlert = (product) => {
+    if (!isAuthenticated) {
+      toast.info('Please login to set price alerts');
+      navigate('/login');
+      return;
+    }
+    toast.success(`You'll be notified when the price drops for ${product.name}`);
+  };
+
+  // Request back in stock alert
+  const handleStockAlert = (product) => {
+    if (!isAuthenticated) {
+      toast.info('Please login to set stock alerts');
+      navigate('/login');
+      return;
+    }
+    toast.success(`You'll be notified when ${product.name} is back in stock`);
+  };
+
   // Loading state - show loader while fetching
   if (loading || loadingProducts) {
     return (
@@ -211,25 +307,88 @@ const Wishlist = () => {
     <div className="min-h-screen bg-gray-50 pt-6 pb-24 lg:pb-8">
       <div className="max-w-7xl mx-auto px-4">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Wishlist</h1>
             <p className="text-gray-600 mt-1">
               {products.length} {products.length === 1 ? 'item' : 'items'} saved
+              {selectedItems.size > 0 && ` • ${selectedItems.size} selected`}
             </p>
           </div>
 
-          {/* Desktop navigation */}
-          <Link
-            to="/products"
-            className="hidden md:inline-flex items-center text-pink-600 hover:text-pink-700 font-semibold"
-          >
-            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Continue Shopping
-          </Link>
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2">
+            {products.length > 0 && (
+              <>
+                <button
+                  onClick={handleShareWishlist}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  Share
+                </button>
+
+                {selectedItems.size > 0 && (
+                  <button
+                    onClick={handleBulkMoveToCart}
+                    disabled={bulkMoving}
+                    className="inline-flex items-center px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {bulkMoving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Moving...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        Move {selectedItems.size} to Cart
+                      </>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* Desktop navigation */}
+            <Link
+              to="/products"
+              className="inline-flex items-center px-4 py-2 text-pink-600 hover:text-pink-700 font-semibold text-sm"
+            >
+              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Continue Shopping
+            </Link>
+          </div>
         </div>
+
+        {/* Bulk Selection */}
+        {products.length > 0 && (
+          <div className="mb-4 flex items-center gap-3">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selectedItems.size === products.length && products.length > 0}
+                onChange={toggleSelectAll}
+                className="w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+              />
+              <span className="ml-2 text-sm font-medium text-gray-700">Select All</span>
+            </label>
+            {selectedItems.size > 0 && (
+              <button
+                onClick={() => setSelectedItems(new Set())}
+                className="text-sm text-gray-600 hover:text-gray-900"
+              >
+                Clear Selection
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Wishlist Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -242,10 +401,19 @@ const Wishlist = () => {
             return (
               <div
                 key={product._id}
-                className={`bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
+                className={`bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all relative ${
                   isRemoving ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
-                }`}
+                } ${selectedItems.has(product._id) ? 'ring-2 ring-pink-600' : ''}`}
               >
+                {/* Selection Checkbox */}
+                <div className="absolute top-2 left-2 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.has(product._id)}
+                    onChange={() => toggleSelectItem(product._id)}
+                    className="w-5 h-5 text-pink-600 border-gray-300 rounded focus:ring-pink-500 shadow-lg bg-white"
+                  />
+                </div>
                 {/* Product Image */}
                 <Link to={`/products/${product._id}`} className="block relative">
                   <div className="aspect-[3/4] overflow-hidden bg-gray-100">
@@ -321,6 +489,40 @@ const Wishlist = () => {
 
                   {/* Action Buttons */}
                   <div className="space-y-2">
+                    {/* Price Alert Button */}
+                    {product.discount > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePriceAlert(product);
+                        }}
+                        className="w-full py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded transition-colors flex items-center justify-center gap-1"
+                        title="Get price drop alerts"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        Price Alert
+                      </button>
+                    )}
+
+                    {/* Stock Alert Button */}
+                    {product.stock === 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handleStockAlert(product);
+                        }}
+                        className="w-full py-1.5 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded transition-colors flex items-center justify-center gap-1"
+                        title="Get back in stock alerts"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        Stock Alert
+                      </button>
+                    )}
+
                     {/* Add to Cart / Move to Cart Button */}
                     {product.stock > 0 && (
                       <button
@@ -382,6 +584,73 @@ const Wishlist = () => {
           </Link>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Share Wishlist</h3>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-4">Share your wishlist with friends and family!</p>
+
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <p className="text-sm text-gray-700 mb-2 font-medium">Share Link:</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={shareLink}
+                  readOnly
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareLink);
+                    toast.success('Link copied!');
+                  }}
+                  className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors text-sm font-medium"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  window.open(`https://wa.me/?text=${encodeURIComponent('Check out my wishlist: ' + shareLink)}`, '_blank');
+                }}
+                className="flex-1 py-2 px-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
+                </svg>
+                WhatsApp
+              </button>
+              <button
+                onClick={() => {
+                  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareLink)}`, '_blank');
+                }}
+                className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+                Facebook
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -6,6 +6,14 @@ import { useWishlistActions } from '../context/WishlistContext';
 import { useAuth, useAuthActions } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import PincodeChecker from '../components/PincodeChecker';
+import ProductCard from '../components/ProductCard';
+import MetaTags from '../components/SEO/MetaTags';
+import {
+  generateProductSchema,
+  generateBreadcrumbSchema,
+  generateCombinedSchema,
+  getAvailabilityStatus
+} from '../utils/structuredData';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -38,6 +46,7 @@ const ProductDetail = () => {
   const [reviewsPage, setReviewsPage] = useState(1);
   const [reviewsTotal, setReviewsTotal] = useState(0);
   const [reviewsSortBy, setReviewsSortBy] = useState('recent');
+  const [reviewFilterRating, setReviewFilterRating] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
@@ -48,9 +57,16 @@ const ProductDetail = () => {
     comment: ''
   });
 
+  // Recommendation states
+  const [similarProducts, setSimilarProducts] = useState([]);
+  const [frequentlyBought, setFrequentlyBought] = useState([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [loadingFrequently, setLoadingFrequently] = useState(false);
+
   useEffect(() => {
     fetchProduct();
     fetchReviews();
+    fetchRecommendations();
   }, [id]);
 
   useEffect(() => {
@@ -137,6 +153,33 @@ const ProductDetail = () => {
       console.error('Error fetching reviews:', err);
     } finally {
       setReviewsLoading(false);
+    }
+  };
+
+  // Fetch recommendations
+  const fetchRecommendations = async () => {
+    // Fetch similar products
+    setLoadingSimilar(true);
+    try {
+      const response = await productApi.getSimilarProducts(id, 8);
+      setSimilarProducts(response.data?.products || []);
+    } catch (err) {
+      console.error('Error fetching similar products:', err);
+      setSimilarProducts([]);
+    } finally {
+      setLoadingSimilar(false);
+    }
+
+    // Fetch frequently bought together
+    setLoadingFrequently(true);
+    try {
+      const response = await productApi.getFrequentlyBoughtTogether(id, 6);
+      setFrequentlyBought(response.data?.products || []);
+    } catch (err) {
+      console.error('Error fetching frequently bought products:', err);
+      setFrequentlyBought([]);
+    } finally {
+      setLoadingFrequently(false);
     }
   };
 
@@ -274,8 +317,51 @@ const ProductDetail = () => {
     );
   }
 
+  // SEO Schema Generation
+  const breadcrumbs = [
+    { name: 'Home', url: '/' },
+    { name: 'Products', url: '/products' },
+    ...(product.category ? [{ name: product.category.name, url: `/products?category=${product.category._id}` }] : []),
+    { name: product.name, url: `/product/${product._id}` }
+  ];
+
+  const breadcrumbSchema = generateBreadcrumbSchema(breadcrumbs);
+
+  const productSchema = generateProductSchema({
+    name: product.name,
+    description: product.description,
+    image: product.images || [],
+    sku: product._id,
+    brand: product.brand || 'StyleHub',
+    price: product.salePrice || product.price,
+    currency: 'INR',
+    availability: getAvailabilityStatus(availableStock > 0, availableStock),
+    url: `/product/${product._id}`,
+    rating: reviewStats?.averageRating,
+    reviewCount: reviewStats?.totalReviews,
+    reviews: reviews.slice(0, 5).map(review => ({
+      author: review.user?.name || 'Anonymous',
+      date: review.createdAt,
+      comment: review.comment,
+      rating: review.rating
+    }))
+  });
+
+  const structuredData = generateCombinedSchema(productSchema, breadcrumbSchema);
+
   return (
     <div className="min-h-screen bg-white pb-24 lg:pb-0">
+      {/* SEO Meta Tags */}
+      <MetaTags
+        title={`${product.name} - Buy Online`}
+        description={product.description || `Shop ${product.name} online at StyleHub. ${availableStock > 0 ? 'In stock' : 'Out of stock'}. Free shipping on orders above ₹999.`}
+        keywords={`${product.name}, ${product.category?.name || 'fashion'}, ${product.brand || 'StyleHub'}, buy online, shopping`}
+        canonicalUrl={`/product/${product._id}`}
+        ogType="product"
+        ogImage={product.images?.[0] || '/icon-512x512.png'}
+        ogImageAlt={product.name}
+        structuredData={structuredData}
+      />
       {/* Header - Back Button */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -600,6 +686,59 @@ const ProductDetail = () => {
             </button>
           </div>
 
+          {/* Recommendation Sections */}
+          {/* Customers Also Bought Section */}
+          {frequentlyBought.length > 0 && (
+            <div className="mt-12 border-t pt-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Customers Also Bought</h2>
+              {loadingFrequently ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="bg-gray-100 rounded-lg overflow-hidden animate-pulse">
+                      <div className="aspect-[3/4] bg-gray-200" />
+                      <div className="p-3 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded" />
+                        <div className="h-5 bg-gray-200 rounded w-2/3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {frequentlyBought.map((product) => (
+                    <ProductCard key={product._id} product={product} compact={false} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* You May Also Like Section */}
+          {similarProducts.length > 0 && (
+            <div className="mt-12 border-t pt-8">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">You May Also Like</h2>
+              {loadingSimilar ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="bg-gray-100 rounded-lg overflow-hidden animate-pulse">
+                      <div className="aspect-[3/4] bg-gray-200" />
+                      <div className="p-3 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded" />
+                        <div className="h-5 bg-gray-200 rounded w-2/3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {similarProducts.map((product) => (
+                    <ProductCard key={product._id} product={product} compact={false} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Reviews Section */}
           <div className="mt-12 border-t pt-8">
             <div className="flex items-center justify-between mb-6">
@@ -675,19 +814,54 @@ const ProductDetail = () => {
               </div>
             )}
 
-            {/* Sort Reviews */}
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm font-medium text-gray-700">Sort by:</span>
-              <select
-                value={reviewsSortBy}
-                onChange={(e) => setReviewsSortBy(e.target.value)}
-                className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-pink-500"
-              >
-                <option value="recent">Most Recent</option>
-                <option value="rating_high">Highest Rated</option>
-                <option value="rating_low">Lowest Rated</option>
-                <option value="helpful">Most Helpful</option>
-              </select>
+            {/* Sort and Filter Reviews */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Sort by:</span>
+                <select
+                  value={reviewsSortBy}
+                  onChange={(e) => setReviewsSortBy(e.target.value)}
+                  className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                >
+                  <option value="recent">Most Recent</option>
+                  <option value="rating_high">Highest Rated</option>
+                  <option value="rating_low">Lowest Rated</option>
+                  <option value="helpful">Most Helpful</option>
+                </select>
+              </div>
+
+              {/* Rating Filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-700">Filter:</span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setReviewFilterRating(null)}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                      reviewFilterRating === null
+                        ? 'bg-pink-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    All
+                  </button>
+                  {[5, 4, 3, 2, 1].map((rating) => (
+                    <button
+                      key={rating}
+                      onClick={() => setReviewFilterRating(rating)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1 ${
+                        reviewFilterRating === rating
+                          ? 'bg-pink-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <span>{rating}</span>
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Reviews List */}
@@ -710,7 +884,9 @@ const ProductDetail = () => {
               </div>
             ) : (
               <div className="space-y-6">
-                {reviews.map((review) => (
+                {reviews
+                  .filter(review => reviewFilterRating === null || review.rating === reviewFilterRating)
+                  .map((review) => (
                   <div key={review._id} className="border-b pb-6 last:border-b-0">
                     {/* Review Header */}
                     <div className="flex items-start justify-between mb-3">
@@ -807,7 +983,8 @@ const ProductDetail = () => {
       </div>
 
       {/* Sticky Bottom Bar - Mobile */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 lg:hidden z-[60] shadow-lg">
+      {/* Position above the bottom navigation (bottom-16 = 64px) */}
+      <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3 lg:hidden z-[60] shadow-lg">
         <div className="flex gap-3">
           <button
             onClick={handleToggleWishlist}

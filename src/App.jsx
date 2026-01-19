@@ -3,12 +3,16 @@ import { Suspense, lazy, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Performance monitoring
 import { initPerformanceMonitoring } from './utils/performance';
 import { initRoutePrefetching, setupResourceHints } from './utils/routePrefetch';
+
+// Error logging
+import { initErrorLogging } from './utils/errorLogger';
 
 // Components that should load immediately (critical for app shell)
 import Header from './components/common/Header';
@@ -60,11 +64,26 @@ const TrackOrder = lazy(() =>
 const MyShipments = lazy(() =>
   import(/* webpackChunkName: "page-my-shipments" */ './pages/MyShipments')
 );
+const Notifications = lazy(() =>
+  import(/* webpackChunkName: "page-notifications" */ './pages/Notifications')
+);
+const Returns = lazy(() =>
+  import(/* webpackChunkName: "page-returns" */ './pages/Returns')
+);
+const NotFound = lazy(() =>
+  import(/* webpackChunkName: "page-not-found" */ './pages/NotFound')
+);
+const ServerError = lazy(() =>
+  import(/* webpackChunkName: "page-server-error" */ './pages/ServerError')
+);
 
 function AppContent() {
   const location = useLocation();
 
   useEffect(() => {
+    // Initialize error logging
+    initErrorLogging();
+
     // Initialize performance monitoring
     if (import.meta.env.VITE_ENABLE_PERFORMANCE_MONITORING === 'true') {
       initPerformanceMonitoring();
@@ -83,7 +102,8 @@ function AppContent() {
   return (
     <div className="w-full min-h-screen flex flex-col bg-gray-50">
       <Header />
-      <main className="w-full flex-grow">
+      {/* Add pb-20 (80px) on mobile to prevent content from being hidden behind fixed bottom nav */}
+      <main className="w-full flex-grow pb-20 lg:pb-0">
         <ErrorBoundary>
           <Suspense fallback={<Loading />}>
             <Routes>
@@ -129,6 +149,14 @@ function AppContent() {
                 }
               />
               <Route
+                path="/returns"
+                element={
+                  <PrivateRoute>
+                    <Returns />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="/profile"
                 element={
                   <PrivateRoute>
@@ -136,6 +164,16 @@ function AppContent() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/notifications"
+                element={
+                  <PrivateRoute>
+                    <Notifications />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="/error" element={<ServerError />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
@@ -152,8 +190,10 @@ function App() {
         <AuthProvider>
           <CartProvider>
             <WishlistProvider>
-              <AppContent />
-              <ToastContainer position="top-right" autoClose={3000} />
+              <NotificationProvider>
+                <AppContent />
+                <ToastContainer position="top-right" autoClose={3000} />
+              </NotificationProvider>
             </WishlistProvider>
           </CartProvider>
         </AuthProvider>

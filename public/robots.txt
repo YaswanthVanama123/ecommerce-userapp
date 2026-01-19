@@ -1,0 +1,91 @@
+# robots.txt for StyleHub User Webapp
+# This file controls search engine crawlers
+
+# Allow all crawlers access to the site
+User-agent: *
+Allow: /
+
+# Disallow specific paths
+Disallow: /api/
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /cart/
+Disallow: /profile/
+Disallow: /wishlist/
+Disallow: /my-orders/
+Disallow: /returns/
+Disallow: /track-order/
+Disallow: /my-shipments/
+Disallow: /notifications/
+Disallow: /search?*
+Disallow: /*?*sort=*
+Disallow: /*?*filter=*
+
+# Allow crawling of product and category pages
+Allow: /products/
+Allow: /product/
+Allow: /categories/
+Allow: /category/
+
+# Crawl-delay for respectful crawling
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://stylehub.com/sitemap.xml
+
+# Specific rules for major search engines
+
+# Google
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /profile/
+
+# Google Image Bot
+User-agent: Googlebot-Image
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+# Bing
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /checkout/
+Disallow: /profile/
+
+# Yandex
+User-agent: Yandex
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Crawl-delay: 2
+
+# Baidu
+User-agent: Baiduspider
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Crawl-delay: 2
+
+# Block bad bots
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Additional notes:
+# - Product pages are fully crawlable for SEO
+# - User-specific pages are blocked to prevent indexing of personal data
+# - API endpoints are blocked to prevent unnecessary crawling
+# - Dynamic URLs with query parameters are restricted to avoid duplicate content

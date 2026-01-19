@@ -14,6 +14,7 @@ export const AuthProvider = ({ children }) => {
 
   // Track if initial auth check is complete
   const isInitialized = useRef(false);
+  const isCheckingAuth = useRef(false); // Prevent concurrent auth checks
 
   // Check authentication on mount
   useEffect(() => {
@@ -22,17 +23,26 @@ export const AuthProvider = ({ children }) => {
 
   // Memoized auth check function
   const checkAuth = useCallback(async () => {
-    const token = localStorage.getItem('accessToken');
+    // Prevent concurrent auth checks
+    if (isCheckingAuth.current) {
+      console.log('[AuthContext] Auth check already in progress, skipping...');
+      return;
+    }
+
+    isCheckingAuth.current = true;
+
+    // Note: Tokens are now in HttpOnly cookies, so we can't check them from JavaScript
+    // We'll check if user data exists in localStorage (for UI purposes) and verify with backend
     const storedUser = localStorage.getItem('user');
 
-    if (token && storedUser) {
+    if (storedUser) {
       try {
         // First set user from localStorage for instant UI update
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         setIsAuthenticated(true);
 
-        // Then verify with backend
+        // Then verify with backend (will use cookie automatically)
         const response = await authApi.getMe();
         const freshUser = response.data;
 
@@ -42,38 +52,64 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('user', JSON.stringify(freshUser));
         }
       } catch (error) {
-        // Token is invalid, clear everything
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        // If error is network/connection error (backend down), keep user logged in from localStorage
+        if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
+          console.warn('[AuthContext] Backend unavailable, using cached user data');
+          // Keep the user from localStorage, don't log them out
+        } else {
+          // Cookie is invalid or expired, clear everything
+          console.log('[AuthContext] Auth verification failed, clearing session');
+          localStorage.removeItem('user');
+          setUser(null);
+          setIsAuthenticated(false);
+        }
+      }
+    } else {
+      // No stored user - only try backend if we might have cookies
+      // Skip the API call to prevent unnecessary 401 errors and infinite loops
+      console.log('[AuthContext] No stored user found, skipping auth check');
+      setUser(null);
+      setIsAuthenticated(false);
+      setLoading(false);
+      isInitialized.current = true;
+      isCheckingAuth.current = false;
+      return;
+
+      /* Original code - causes infinite loops when not logged in
+      // Try to fetch user data from backend (in case cookies exist but localStorage was cleared)
+      try {
+        const response = await authApi.getMe();
+        const freshUser = response.data;
+        setUser(freshUser);
+        setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify(freshUser));
+      } catch (error) {
+        // If backend is down, just set loading to false and don't show error
+        if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
+          console.warn('[AuthContext] Backend unavailable during initial auth check');
+        } else {
+          console.log('[AuthContext] No valid session found');
+        }
+        // No valid session
         setUser(null);
         setIsAuthenticated(false);
       }
-    } else {
-      setUser(null);
-      setIsAuthenticated(false);
+      */
     }
 
     setLoading(false);
     isInitialized.current = true;
+    isCheckingAuth.current = false;
   }, []);
 
   // Login function with optimistic updates
   const login = useCallback(async (credentials) => {
     try {
       const response = await authApi.login(credentials);
-      const { user: userData, accessToken, refreshToken } = response.data;
+      const { user: userData } = response.data;
 
-      // Batch localStorage updates
-      const updates = [
-        ['accessToken', accessToken],
-        ['refreshToken', refreshToken],
-        ['user', JSON.stringify(userData)]
-      ];
-
-      updates.forEach(([key, value]) => {
-        localStorage.setItem(key, value);
-      });
+      // Store only user data in localStorage (tokens are in HttpOnly cookies)
+      localStorage.setItem('user', JSON.stringify(userData));
 
       // Batch state updates
       setUser(userData);
@@ -92,18 +128,10 @@ export const AuthProvider = ({ children }) => {
   const register = useCallback(async (userData) => {
     try {
       const response = await authApi.register(userData);
-      const { user: newUser, accessToken, refreshToken } = response.data;
+      const { user: newUser } = response.data;
 
-      // Batch localStorage updates
-      const updates = [
-        ['accessToken', accessToken],
-        ['refreshToken', refreshToken],
-        ['user', JSON.stringify(newUser)]
-      ];
-
-      updates.forEach(([key, value]) => {
-        localStorage.setItem(key, value);
-      });
+      // Store only user data in localStorage (tokens are in HttpOnly cookies)
+      localStorage.setItem('user', JSON.stringify(newUser));
 
       // Batch state updates
       setUser(newUser);
@@ -125,9 +153,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Batch localStorage removals
-      const keysToRemove = ['accessToken', 'refreshToken', 'user'];
-      keysToRemove.forEach(key => localStorage.removeItem(key));
+      // Clear user data from localStorage (cookies are cleared by backend)
+      localStorage.removeItem('user');
 
       // Batch state updates
       setUser(null);

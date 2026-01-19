@@ -16,7 +16,8 @@ import axios from 'axios';
 // Configuration Constants
 // ============================================================================
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Use relative path to leverage Vite proxy - avoids CORS issues in development
+const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const TIMEOUTS = {
   DEFAULT: 30000,      // 30 seconds for normal requests
@@ -383,7 +384,13 @@ const shouldRetry = (error, retryCount) => {
   const method = error.config?.method?.toUpperCase();
   if (!RETRY_CONFIG.RETRYABLE_METHODS.includes(method)) return false;
 
-  // Retry on network errors
+  // Don't retry if backend is completely down (connection refused)
+  if (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK') {
+    console.warn('[Axios] Backend unavailable, skipping retry');
+    return false;
+  }
+
+  // Retry on network errors (timeout, etc.)
   if (!error.response) return true;
 
   // Retry on specific status codes
@@ -412,8 +419,8 @@ const axiosInstance = axios.create({
     'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
-  // Enable cross-site Access-Control
-  withCredentials: false,
+  // Enable credentials to send cookies
+  withCredentials: true,
   // Validate status
   validateStatus: (status) => status >= 200 && status < 300,
   // Maximum content length
@@ -445,15 +452,46 @@ const metrics = {
 // Request Interceptor
 // ============================================================================
 
+// CSRF Token management
+let csrfToken = null;
+let isRefreshingToken = false; // Prevent multiple simultaneous refresh attempts
+
+// Function to fetch CSRF token
+const fetchCsrfToken = async () => {
+  try {
+    const response = await axios.get('/api/csrf-token', {
+      withCredentials: true
+    });
+    csrfToken = response.data?.data?.csrfToken;
+    return csrfToken;
+  } catch (error) {
+    console.error('Failed to fetch CSRF token:', error);
+    return null;
+  }
+};
+
+// Fetch CSRF token on initialization (with delay to ensure proper setup)
+// Disabled auto-fetch - will fetch lazily when needed to avoid issues if backend is down
+// setTimeout(() => {
+//   fetchCsrfToken();
+// }, 100);
+
 axiosInstance.interceptors.request.use(
   async (config) => {
     const startTime = Date.now();
     config.metadata = { startTime };
 
-    // Add auth token
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Add CSRF token for state-changing methods
+    if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(config.method?.toUpperCase())) {
+      // If no CSRF token, fetch it
+      if (!csrfToken) {
+        await fetchCsrfToken();
+      }
+
+      // Add CSRF token to headers
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
     }
 
     // Handle timeout override
@@ -582,35 +620,35 @@ axiosInstance.interceptors.response.use(
     const config = error.config;
 
     // Handle token refresh for 401 errors
-    if (error.response?.status === 401 && !config._retry) {
+    // Skip token refresh for auth endpoints themselves to prevent infinite loops
+    const isAuthEndpoint = config.url?.includes('/auth/me') ||
+                          config.url?.includes('/auth/refresh') ||
+                          config.url?.includes('/auth/login') ||
+                          config.url?.includes('/auth/register');
+
+    if (error.response?.status === 401 && !config._retry && !isRefreshingToken && !isAuthEndpoint) {
       config._retry = true;
+      isRefreshingToken = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const response = await axios.post(
-            `${BASE_URL}/auth/refresh`,
-            { refreshToken }
-          );
+        // Try to refresh token using cookie-based refresh endpoint
+        const response = await axios.post(
+          '/api/auth/refresh',
+          {}, // No body needed as refresh token is in cookie
+          { withCredentials: true }
+        );
 
-          const { accessToken } = response.data.data;
-          localStorage.setItem('accessToken', accessToken);
-
-          config.headers.Authorization = `Bearer ${accessToken}`;
+        // Token refreshed successfully, retry the original request
+        if (response.data?.success) {
+          isRefreshingToken = false;
           return axiosInstance(config);
         }
       } catch (refreshError) {
-        // Refresh failed, clear tokens and redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-
-        // Only redirect if in browser environment
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
-
-        return Promise.reject(refreshError);
+        isRefreshingToken = false;
+        // Refresh failed - don't redirect, just reject
+        // Let the calling code handle it (e.g., AuthContext will handle gracefully)
+        console.log('[Axios] Token refresh failed, clearing auth state');
+        return Promise.reject(error);
       }
     }
 

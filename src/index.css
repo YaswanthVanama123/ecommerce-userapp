@@ -72,3 +72,16 @@ body {
   }
 }
 
+/*
+ * Mobile Bottom Navigation Spacing
+ * ================================
+ * The app has a fixed bottom navigation on mobile (<1024px)
+ * Use these utilities for proper spacing:
+ *
+ * Main content: pb-20 lg:pb-0 (80px padding on mobile)
+ * Fixed bottom bars: bottom-16 (64px above nav)
+ * Bottom navigation: bottom-0 z-50 (always at bottom)
+ *
+ * See: MOBILE_NAV_FIX.md for details
+ */
+

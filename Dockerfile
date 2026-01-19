@@ -1,5 +1,11 @@
-# Build stage for React user webapp
+# Multi-stage build for React user webapp
+# Stage 1: Build stage
 FROM node:20-alpine AS builder
+
+# Add labels
+LABEL maintainer="your-email@example.com"
+LABEL description="User webapp production build"
+LABEL version="1.0"
 
 WORKDIR /app
 
@@ -7,41 +13,44 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm ci && \
+    npm cache clean --force
 
 # Copy source code
 COPY . .
 
-# Build application
+# Build application for production
 RUN npm run build
 
-# Production stage - serve with lightweight HTTP server
-FROM node:20-alpine
+# Stage 2: Production stage with Nginx
+FROM nginx:alpine
 
-WORKDIR /app
+# Install nginx-mod-http-geoip for advanced features (optional)
+RUN apk add --no-cache nginx-mod-http-brotli
 
-# Install dumb-init and serve package
-RUN apk add --no-cache dumb-init && \
-    npm install -g serve
+# Copy custom nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy built application from builder
-COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Create non-root user for nginx
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
 
-USER nodejs
+# Switch to non-root user
+USER nginx
 
 # Expose port
-EXPOSE 3000
+EXPOSE 8080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/ || exit 1
 
-# Use dumb-init to run serve process
-ENTRYPOINT ["/usr/sbin/dumb-init", "--"]
-
-# Start application
-CMD ["serve", "-s", "dist", "-l", "3000"]
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

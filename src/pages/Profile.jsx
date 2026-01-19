@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuthWithActions } from '../context/AuthContext';
-import { authApi, orderApi, addressApi } from '../api';
+import { authApi, orderApi, addressApi, returnApi } from '../api';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 
@@ -36,6 +36,10 @@ const Profile = () => {
   const [editingAddress, setEditingAddress] = useState(null);
   const [isSavingAddress, setIsSavingAddress] = useState(false);
 
+  // Returns states
+  const [returns, setReturns] = useState([]);
+  const [isLoadingReturns, setIsLoadingReturns] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -69,6 +73,13 @@ const Profile = () => {
   useEffect(() => {
     if (activeTab === 'addresses' && addresses.length === 0) {
       fetchAddresses();
+    }
+  }, [activeTab]);
+
+  // Fetch returns when returns tab is active
+  useEffect(() => {
+    if (activeTab === 'returns' && returns.length === 0) {
+      fetchReturns();
     }
   }, [activeTab]);
 
@@ -136,6 +147,21 @@ const Profile = () => {
       toast.error('Failed to load addresses');
     } finally {
       setIsLoadingAddresses(false);
+    }
+  };
+
+  const fetchReturns = async () => {
+    setIsLoadingReturns(true);
+    try {
+      const response = await returnApi.getUserReturns({ skipCache: true });
+      if (response.success) {
+        setReturns(response.data.returns || response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching returns:', error);
+      toast.error('Failed to load returns');
+    } finally {
+      setIsLoadingReturns(false);
     }
   };
 
@@ -420,6 +446,15 @@ const Profile = () => {
       icon: (
         <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+        </svg>
+      )
+    },
+    {
+      id: 'returns',
+      label: 'Returns',
+      icon: (
+        <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
         </svg>
       )
     },
@@ -959,6 +994,106 @@ const Profile = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 'returns':
+        return (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">My Returns</h2>
+                  <p className="text-sm text-gray-500 mt-1">View and manage your return requests</p>
+                </div>
+                <button
+                  onClick={() => navigate('/returns')}
+                  className="px-4 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition font-medium text-sm"
+                >
+                  View All Returns
+                </button>
+              </div>
+            </div>
+
+            {isLoadingReturns ? (
+              <div className="p-12 text-center">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
+                <p className="mt-4 text-gray-600">Loading returns...</p>
+              </div>
+            ) : returns.length === 0 ? (
+              <div className="p-12 text-center">
+                <svg className="w-20 h-20 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Returns Yet</h3>
+                <p className="text-gray-600 mb-6">You haven't created any return requests</p>
+                <button
+                  onClick={() => navigate('/returns')}
+                  className="inline-flex items-center px-6 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition font-medium"
+                >
+                  Create Return Request
+                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <div className="p-6">
+                <div className="space-y-4">
+                  {returns.slice(0, 5).map((returnItem) => (
+                    <div
+                      key={returnItem._id}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition cursor-pointer"
+                      onClick={() => navigate('/returns')}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <h3 className="font-semibold text-gray-900">
+                              Return #{returnItem.returnNumber || returnItem._id.slice(-8).toUpperCase()}
+                            </h3>
+                            <p className="text-sm text-gray-500">Order: #{returnItem.order?.orderNumber || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-gray-900">{formatCurrency(returnItem.refundAmount || 0)}</p>
+                          <span className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-semibold ${
+                            returnItem.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            returnItem.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            returnItem.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            returnItem.status === 'refund_completed' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {returnItem.status.replace(/_/g, ' ').toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <span>{returnItem.items?.length || 0} item(s)</span>
+                          <span>•</span>
+                          <span>{returnItem.type.charAt(0).toUpperCase() + returnItem.type.slice(1)}</span>
+                          <span>•</span>
+                          <span>{formatDate(returnItem.createdAt)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {returns.length > 5 && (
+                  <div className="mt-4 text-center">
+                    <button
+                      onClick={() => navigate('/returns')}
+                      className="text-pink-600 hover:text-pink-700 font-medium text-sm"
+                    >
+                      View all {returns.length} returns
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>

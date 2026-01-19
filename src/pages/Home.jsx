@@ -4,6 +4,8 @@ import { productApi, bannerApi } from '../api';
 import ProductCard from '../components/products/ProductCard';
 import BannerCarousel, { BannerCarouselSkeleton } from '../components/home/BannerCarousel';
 import OfferCard, { OfferCardSkeleton } from '../components/home/OfferCard';
+import MetaTags from '../components/SEO/MetaTags';
+import { generateWebSiteSchema, generateOrganizationSchema, generateCombinedSchema } from '../utils/structuredData';
 
 // Loading Skeleton Components
 const ProductCardSkeleton = () => (
@@ -347,8 +349,32 @@ const Home = () => {
     navigate(`/products${filter}`);
   };
 
+  // SEO Schema Generation
+  const websiteSchema = generateWebSiteSchema({
+    name: 'StyleHub',
+    description: 'Your one-stop shop for fashion and style. Discover curated collections from top brands.',
+  });
+
+  const organizationSchema = generateOrganizationSchema({
+    name: 'StyleHub',
+    description: 'Leading online fashion retailer offering quality products at great prices'
+  });
+
+  const structuredData = generateCombinedSchema(websiteSchema, organizationSchema);
+
   return (
     <div className="w-full min-h-screen bg-gray-50 pb-20 lg:pb-0">
+      {/* SEO Meta Tags */}
+      <MetaTags
+        title="Home - Shop Latest Fashion & Trending Styles"
+        description="Discover curated fashion collections from top brands. Free shipping on orders above ₹999. Shop the latest trends in clothing, accessories, and more at StyleHub."
+        keywords="fashion, online shopping, clothing, accessories, trends, StyleHub, free shipping"
+        canonicalUrl="/"
+        ogType="website"
+        ogImage="/icon-512x512.png"
+        ogImageAlt="StyleHub - Fashion & Shopping"
+        structuredData={structuredData}
+      />
       {/* Hero Banner Carousel */}
       {loadingHero ? (
         <BannerCarouselSkeleton />

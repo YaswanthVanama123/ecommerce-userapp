@@ -1,7 +1,7 @@
 import React from 'react';
 
 /**
- * Loading Component - Optimized loading states
+ * Loading Component - Optimized loading states with pink theme
  */
 const Loading = ({ message = 'Loading...', fullscreen = false, size = 'medium' }) => {
   const sizeClasses = {
@@ -18,7 +18,7 @@ const Loading = ({ message = 'Loading...', fullscreen = false, size = 'medium' }
     <div className={containerClasses}>
       <div className="text-center">
         <div
-          className={`inline-block animate-spin rounded-full border-b-2 border-blue-600 ${sizeClasses[size]}`}
+          className={`inline-block animate-spin rounded-full border-b-2 border-pink-600 ${sizeClasses[size]}`}
           role="status"
           aria-label="Loading"
         ></div>
@@ -80,7 +80,7 @@ export const ListSkeleton = ({ items = 3 }) => {
 };
 
 /**
- * Spinner Component - Inline spinner for buttons
+ * Spinner Component - Inline spinner for buttons (pink theme)
  */
 export const Spinner = ({ size = 'small', color = 'white' }) => {
   const sizeClasses = {
@@ -91,7 +91,7 @@ export const Spinner = ({ size = 'small', color = 'white' }) => {
 
   const colorClasses = {
     white: 'border-white',
-    blue: 'border-blue-600',
+    pink: 'border-pink-600',
     gray: 'border-gray-600',
   };
 
@@ -107,13 +107,13 @@ export const Spinner = ({ size = 'small', color = 'white' }) => {
 };
 
 /**
- * Progress Bar Component
+ * Progress Bar Component (pink theme)
  */
 export const ProgressBar = ({ progress = 0, className = '' }) => {
   return (
     <div className={`w-full bg-gray-200 rounded-full h-2 ${className}`}>
       <div
-        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+        className="bg-gradient-to-r from-pink-500 to-pink-600 h-2 rounded-full transition-all duration-300"
         style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
         role="progressbar"
         aria-valuenow={progress}

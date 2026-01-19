@@ -3,17 +3,19 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthWithActions } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import { useNotifications } from '../../context/NotificationContext';
 import NotificationCenter from '../notifications/NotificationCenter';
-import { notificationApi } from '../../api';
+import GlobalSearch from './GlobalSearch';
 
 const Header = () => {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [notificationOpen, setNotificationOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const { user, logout, isAuthenticated } = useAuthWithActions();
   const { totalItems } = useCart();
   const { count: wishlistCount } = useWishlist();
+  const { unreadCount } = useNotifications();
   const navigate = useNavigate();
 
   const handleSearch = (e) => {
@@ -25,50 +27,22 @@ const Header = () => {
     }
   };
 
-  // Fetch unread notification count
+  // Keyboard shortcut for global search (Ctrl+K / Cmd+K)
   useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (isAuthenticated) {
-        try {
-          const response = await notificationApi.getNotifications(
-            { page: 1, limit: 50 },
-            { skipCache: true }
-          );
-          if (response.success && response.data.notifications) {
-            const unread = response.data.notifications.filter(n => !n.read).length;
-            setUnreadCount(unread);
-          }
-        } catch (error) {
-          console.error('Error fetching notifications:', error);
-        }
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setGlobalSearchOpen(prev => !prev);
       }
     };
 
-    fetchUnreadCount();
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
-    // Refresh count every 2 minutes
-    const interval = setInterval(fetchUnreadCount, 120000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated]);
-
-  // Update unread count when notification center closes
-  const handleNotificationClose = async () => {
+  // Handle notification close
+  const handleNotificationClose = () => {
     setNotificationOpen(false);
-    // Refresh count after closing
-    if (isAuthenticated) {
-      try {
-        const response = await notificationApi.getNotifications(
-          { page: 1, limit: 50 },
-          { skipCache: true }
-        );
-        if (response.success && response.data.notifications) {
-          const unread = response.data.notifications.filter(n => !n.read).length;
-          setUnreadCount(unread);
-        }
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
-      }
-    }
   };
 
   return (
@@ -88,7 +62,7 @@ const Header = () => {
             {/* Mobile Icons */}
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => setSearchOpen(!searchOpen)}
+                onClick={() => setGlobalSearchOpen(true)}
                 className="text-gray-700 hover:text-pink-600"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -145,20 +119,22 @@ const Header = () => {
               </span>
             </Link>
 
-            {/* Search Bar */}
+            {/* Search Bar with Global Search */}
             <div className="flex-1 max-w-xl mx-8">
-              <form onSubmit={handleSearch} className="relative">
-                <input
-                  type="text"
-                  placeholder="Search for clothing, shoes, accessories..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                />
+              <div
+                onClick={() => setGlobalSearchOpen(true)}
+                className="relative cursor-pointer"
+              >
+                <div className="w-full px-4 py-2.5 pl-10 pr-20 border border-gray-300 rounded-lg bg-white hover:border-pink-400 transition-colors">
+                  <span className="text-gray-500">Search for clothing, shoes, accessories...</span>
+                </div>
                 <svg className="w-5 h-5 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-              </form>
+                <kbd className="absolute right-3 top-2.5 px-2 py-1 text-xs bg-gray-100 rounded border border-gray-300">
+                  Ctrl+K
+                </kbd>
+              </div>
             </div>
 
             {/* Right Menu */}
@@ -352,6 +328,12 @@ const Header = () => {
       <NotificationCenter
         isOpen={notificationOpen}
         onClose={handleNotificationClose}
+      />
+
+      {/* Global Search Modal */}
+      <GlobalSearch
+        isOpen={globalSearchOpen}
+        onClose={() => setGlobalSearchOpen(false)}
       />
     </>
   );

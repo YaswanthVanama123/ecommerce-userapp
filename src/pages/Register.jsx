@@ -220,7 +220,13 @@ const Register = () => {
                     autoComplete="new-password"
                     {...register('password', {
                       required: 'Password is required',
-                      minLength: { value: 6, message: 'Min 6 characters' }
+                      minLength: { value: 8, message: 'Min 8 characters' },
+                      validate: {
+                        hasUpperCase: (value) => /[A-Z]/.test(value) || 'Must contain uppercase letter',
+                        hasLowerCase: (value) => /[a-z]/.test(value) || 'Must contain lowercase letter',
+                        hasNumber: (value) => /[0-9]/.test(value) || 'Must contain number',
+                        hasSpecialChar: (value) => /[^A-Za-z0-9]/.test(value) || 'Must contain special character'
+                      }
                     })}
                     className={`w-full px-4 py-3 border ${
                       errors.password ? 'border-red-500' : 'border-gray-300'
