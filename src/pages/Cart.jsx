@@ -1,4 +1,4 @@
-import { useMemo, useCallback, memo, Fragment, useState } from 'react';
+import { useMemo, useCallback, memo, Fragment, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
@@ -216,6 +216,17 @@ const Cart = () => {
   const { clearCart } = useCartActions();
   const [isClearing, setIsClearing] = useState(false);
 
+  // Debug logging for cart state
+  useEffect(() => {
+    console.log('[Cart] State updated:', {
+      isAuthenticated,
+      cart,
+      cartItems: cart?.items?.length || 0,
+      total,
+      loading
+    });
+  }, [cart, isAuthenticated, total, loading]);
+
   // Memoize navigation callbacks
   const handleCheckout = useCallback(() => {
     if (isAuthenticated) {
@@ -241,10 +252,16 @@ const Cart = () => {
   }, [clearCart]);
 
   // Memoize computed values
-  const isEmpty = useMemo(
-    () => !cart?.items || cart.items.length === 0,
-    [cart?.items]
-  );
+  const isEmpty = useMemo(() => {
+    const empty = !cart?.items || cart.items.length === 0;
+    console.log('[Cart] isEmpty calculated:', {
+      empty,
+      hasCart: !!cart,
+      hasItems: !!cart?.items,
+      itemsLength: cart?.items?.length || 0
+    });
+    return empty;
+  }, [cart?.items]);
 
   const itemCount = useMemo(
     () => cart?.items?.length || 0,

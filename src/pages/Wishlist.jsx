@@ -23,7 +23,15 @@ const Wishlist = () => {
   // Fetch full product details for wishlist items
   useEffect(() => {
     const fetchProductDetails = async () => {
+      console.log('[Wishlist] fetchProductDetails called:', {
+        wishlist,
+        wishlistLength: wishlist?.length,
+        isAuthenticated,
+        firstItem: wishlist?.[0]
+      });
+
       if (!wishlist || wishlist.length === 0) {
+        console.log('[Wishlist] Wishlist is empty, setting products to []');
         setProducts([]);
         setLoadingProducts(false);
         return;
@@ -33,35 +41,50 @@ const Wishlist = () => {
       try {
         // For authenticated users, wishlist items are objects with product details
         // For guest users, wishlist items are just product IDs
-        if (isAuthenticated && wishlist[0]?.product) {
-          // Items already have product details - map them properly
-          const productList = wishlist.map(item => {
-            const product = item.product;
-            // Calculate discount percentage if discountPrice exists
-            let discount = 0;
-            if (product.discountPrice && product.price > product.discountPrice) {
-              discount = Math.round(((product.price - product.discountPrice) / product.price) * 100);
-            }
 
-            // Calculate total stock
-            let totalStock = 0;
-            if (Array.isArray(product.stock)) {
-              totalStock = product.stock.reduce((sum, s) => sum + (s.quantity || 0), 0);
-            } else if (typeof product.stock === 'number') {
-              totalStock = product.stock;
-            }
+        // Check if this is authenticated user data (items have .product field)
+        const hasProductField = wishlist[0]?.product !== undefined;
+        console.log('[Wishlist] Data structure check:', {
+          isAuthenticated,
+          hasProductField,
+          firstItemType: typeof wishlist[0],
+          firstItemKeys: wishlist[0] ? Object.keys(wishlist[0]) : []
+        });
 
-            return {
-              ...product,
-              discount, // Add calculated discount percentage
-              stock: totalStock, // Convert stock array to total number
-              wishlistItemId: item._id,
-              addedAt: item.addedAt
-            };
-          });
+        if (isAuthenticated && hasProductField) {
+          // Authenticated user - items already have product details populated
+          console.log('[Wishlist] Processing authenticated user wishlist with populated products');
+          const productList = wishlist
+            .filter(item => item.product) // Filter out items with null/undefined products
+            .map(item => {
+              const product = item.product;
+              // Calculate discount percentage if discountPrice exists
+              let discount = 0;
+              if (product.discountPrice && product.price > product.discountPrice) {
+                discount = Math.round(((product.price - product.discountPrice) / product.price) * 100);
+              }
+
+              // Calculate total stock
+              let totalStock = 0;
+              if (Array.isArray(product.stock)) {
+                totalStock = product.stock.reduce((sum, s) => sum + (s.quantity || 0), 0);
+              } else if (typeof product.stock === 'number') {
+                totalStock = product.stock;
+              }
+
+              return {
+                ...product,
+                discount, // Add calculated discount percentage
+                stock: totalStock, // Convert stock array to total number
+                wishlistItemId: item._id,
+                addedAt: item.addedAt
+              };
+            });
+          console.log('[Wishlist] Mapped products for authenticated user:', productList.length);
           setProducts(productList);
         } else if (!isAuthenticated && typeof wishlist[0] === 'string') {
-          // Guest wishlist - need to fetch product details
+          // Guest user - wishlist contains product IDs, need to fetch details
+          console.log('[Wishlist] Processing guest wishlist - fetching product details for IDs');
           const productPromises = wishlist.map(productId =>
             productApi.getProductById(productId).catch(err => {
               console.error(`Failed to fetch product ${productId}:`, err);
@@ -72,15 +95,37 @@ const Wishlist = () => {
           const productList = productResponses
             .filter(res => res !== null && res.data)
             .map(res => res.data);
+          console.log('[Wishlist] Fetched guest products:', productList.length);
           setProducts(productList);
         } else if (!isAuthenticated && wishlist[0]?.name) {
-          // Guest wishlist with full product data
+          // Guest user - wishlist already contains full product objects
+          console.log('[Wishlist] Processing guest wishlist with full product data');
           setProducts(wishlist);
         } else {
-          setProducts([]);
+          // Fallback: try to handle unexpected data structure
+          console.warn('[Wishlist] Unexpected wishlist data structure, attempting fallback');
+
+          // If authenticated but items don't have .product, try fetching
+          if (isAuthenticated && typeof wishlist[0] === 'string') {
+            console.log('[Wishlist] Authenticated user with product IDs - fetching details');
+            const productPromises = wishlist.map(productId =>
+              productApi.getProductById(productId).catch(err => {
+                console.error(`Failed to fetch product ${productId}:`, err);
+                return null;
+              })
+            );
+            const productResponses = await Promise.all(productPromises);
+            const productList = productResponses
+              .filter(res => res !== null && res.data)
+              .map(res => res.data);
+            setProducts(productList);
+          } else {
+            console.error('[Wishlist] Unable to process wishlist data structure:', wishlist[0]);
+            setProducts([]);
+          }
         }
       } catch (error) {
-        console.error('Error fetching product details:', error);
+        console.error('[Wishlist] Error fetching product details:', error);
         setProducts([]);
       } finally {
         setLoadingProducts(false);

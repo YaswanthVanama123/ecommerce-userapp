@@ -136,12 +136,11 @@ export const CartProvider = ({ children }) => {
 
       const response = await cartApi.getCart();
       console.log('[CartContext] fetchCart response:', response);
-      console.log('[CartContext] response.data:', response.data);
 
-      // API returns: { success, message, data: { cart: { items: [...] } } }
-      // cartApi.getCart() returns the full response, so:
-      // response.data = { cart: { items: [...] } }
-      const fetchedCart = response.data?.cart || response.cart || null;
+      // API returns response.data which contains { success, message, data: { cart: {...} } }
+      // cartApi.getCart() returns response.data, so the structure is: { cart: {...} }
+      // Therefore we access response.cart directly, NOT response.data.cart
+      const fetchedCart = response.cart || null;
       console.log('[CartContext] fetchedCart:', fetchedCart);
 
       if (isMounted.current) {
@@ -328,7 +327,9 @@ export const CartProvider = ({ children }) => {
       pendingUpdates.current++;
 
       const response = await cartApi.addToCart({ productId, quantity, size, color });
-      const updatedCart = response.data.data?.cart || response.data.cart;
+      // API returns: { success, message, data: { cart: {...} } }
+      // cartApi.addToCart() returns response.data, so: { cart: {...} }
+      const updatedCart = response.cart;
 
       if (isMounted.current) {
         setCart(updatedCart);
@@ -390,7 +391,9 @@ export const CartProvider = ({ children }) => {
           pendingUpdates.current++;
 
           const response = await cartApi.updateCartItem(itemId, quantity);
-          const updatedCart = response.data.data?.cart || response.data.cart;
+          // API returns: { success, message, data: { cart: {...} } }
+          // cartApi.updateCartItem() returns response.data, so: { cart: {...} }
+          const updatedCart = response.cart;
 
           if (isMounted.current) {
             setCart(updatedCart);
@@ -433,7 +436,9 @@ export const CartProvider = ({ children }) => {
       pendingUpdates.current++;
 
       const response = await cartApi.removeFromCart(itemId);
-      const updatedCart = response.data.data?.cart || response.data.cart;
+      // API returns: { success, message, data: { cart: {...} } }
+      // cartApi.removeFromCart() returns response.data, so: { cart: {...} }
+      const updatedCart = response.cart;
 
       if (isMounted.current) {
         setCart(updatedCart);

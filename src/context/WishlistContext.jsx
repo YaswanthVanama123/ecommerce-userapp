@@ -105,32 +105,11 @@ export const WishlistProvider = ({ children }) => {
 
       const response = await wishlistApi.getWishlist();
       console.log('[WishlistContext] fetchWishlist response:', response);
-      console.log('[WishlistContext] response.data:', response.data);
 
-      // Handle the specific API response structure
-      // wishlistApi.getWishlist() returns response.data from axios
-      // So 'response' here is the full API response: { success, message, data: { wishlist: { items } } }
-      let fetchedWishlist = [];
-
-      if (response.data?.wishlist?.items) {
-        // Structure: { data: { wishlist: { items: [...] } } }
-        fetchedWishlist = response.data.wishlist.items;
-        console.log('[WishlistContext] Found items at response.data.wishlist.items');
-      } else if (response.data?.items) {
-        // Structure: { data: { items: [...] } }
-        fetchedWishlist = response.data.items;
-        console.log('[WishlistContext] Found items at response.data.items');
-      } else if (response.wishlist?.items) {
-        // Structure: { wishlist: { items: [...] } }
-        fetchedWishlist = response.wishlist.items;
-        console.log('[WishlistContext] Found items at response.wishlist.items');
-      } else if (response.items) {
-        // Structure: { items: [...] }
-        fetchedWishlist = response.items;
-        console.log('[WishlistContext] Found items at response.items');
-      } else {
-        console.warn('[WishlistContext] Could not find items in response structure');
-      }
+      // API returns response.data which contains { wishlist: { items: [...] } }
+      // wishlistApi.getWishlist() returns response.data, so: { wishlist: { items: [...] } }
+      // Therefore we access response.wishlist.items directly
+      const fetchedWishlist = response.wishlist?.items || [];
 
       console.log('[WishlistContext] fetchedWishlist:', fetchedWishlist);
       console.log('[WishlistContext] fetchedWishlist length:', fetchedWishlist?.length);
