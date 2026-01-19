@@ -1,12 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthWithActions } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useWishlist } from '../../context/WishlistContext';
+import NotificationCenter from '../notifications/NotificationCenter';
+import { notificationApi } from '../../api';
 
 const Header = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { user, logout, isAuthenticated } = useAuthWithActions();
   const { totalItems } = useCart();
   const { count: wishlistCount } = useWishlist();
@@ -18,6 +22,52 @@ const Header = () => {
       navigate(`/products?search=${encodeURIComponent(searchQuery)}`);
       setSearchOpen(false);
       setSearchQuery('');
+    }
+  };
+
+  // Fetch unread notification count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const response = await notificationApi.getNotifications(
+            { page: 1, limit: 50 },
+            { skipCache: true }
+          );
+          if (response.success && response.data.notifications) {
+            const unread = response.data.notifications.filter(n => !n.read).length;
+            setUnreadCount(unread);
+          }
+        } catch (error) {
+          console.error('Error fetching notifications:', error);
+        }
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Refresh count every 2 minutes
+    const interval = setInterval(fetchUnreadCount, 120000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // Update unread count when notification center closes
+  const handleNotificationClose = async () => {
+    setNotificationOpen(false);
+    // Refresh count after closing
+    if (isAuthenticated) {
+      try {
+        const response = await notificationApi.getNotifications(
+          { page: 1, limit: 50 },
+          { skipCache: true }
+        );
+        if (response.success && response.data.notifications) {
+          const unread = response.data.notifications.filter(n => !n.read).length;
+          setUnreadCount(unread);
+        }
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+      }
     }
   };
 
@@ -45,6 +95,22 @@ const Header = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </button>
+
+              {isAuthenticated && (
+                <button
+                  onClick={() => setNotificationOpen(true)}
+                  className="relative text-gray-700 hover:text-pink-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
 
               <Link to="/wishlist" className="relative">
                 <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,15 +171,36 @@ const Header = () => {
                   <Link to="/orders" className="text-gray-700 hover:text-pink-600 font-medium">
                     Orders
                   </Link>
+                  <Link to="/shipments" className="text-gray-700 hover:text-pink-600 font-medium">
+                    Track
+                  </Link>
                   <button
                     onClick={logout}
                     className="text-gray-700 hover:text-pink-600 font-medium"
                   >
                     Logout
                   </button>
+
+                  {/* Notification Bell */}
+                  <button
+                    onClick={() => setNotificationOpen(true)}
+                    className="relative text-gray-700 hover:text-pink-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
                 </>
               ) : (
                 <>
+                  <Link to="/track" className="text-gray-700 hover:text-pink-600 font-medium">
+                    Track Order
+                  </Link>
                   <Link to="/login" className="text-gray-700 hover:text-pink-600 font-medium">
                     Login
                   </Link>
@@ -200,26 +287,43 @@ const Header = () => {
       {/* Bottom Navigation - Mobile Only */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 shadow-lg">
         <div className="flex items-center justify-around py-2">
-          <Link to="/" className="flex flex-col items-center py-2 px-4 text-gray-600 hover:text-pink-600">
+          <Link to="/" className="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-pink-600">
             <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
             <span className="text-xs font-medium">Home</span>
           </Link>
 
-          <Link to="/products" className="flex flex-col items-center py-2 px-4 text-gray-600 hover:text-pink-600">
+          <Link to="/products" className="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-pink-600">
             <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <span className="text-xs font-medium">Explore</span>
           </Link>
 
-          <Link to="/wishlist" className="flex flex-col items-center py-2 px-4 text-gray-600 hover:text-pink-600 relative">
+          {isAuthenticated ? (
+            <Link to="/shipments" className="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-pink-600">
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="text-xs font-medium">Track</span>
+            </Link>
+          ) : (
+            <Link to="/track" className="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-pink-600">
+              <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="text-xs font-medium">Track</span>
+            </Link>
+          )}
+
+          <Link to="/wishlist" className="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-pink-600 relative">
             <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
             {wishlistCount > 0 && (
-              <span className="absolute top-1 right-2 bg-pink-600 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+              <span className="absolute top-1 right-1 bg-pink-600 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
                 {wishlistCount > 9 ? '9+' : wishlistCount}
               </span>
             )}
@@ -227,7 +331,7 @@ const Header = () => {
           </Link>
 
           {isAuthenticated ? (
-            <Link to="/profile" className="flex flex-col items-center py-2 px-4 text-gray-600 hover:text-pink-600">
+            <Link to="/profile" className="flex flex-col items-center py-2 px-3 text-gray-600 hover:text-pink-600">
               <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -243,6 +347,12 @@ const Header = () => {
           )}
         </div>
       </nav>
+
+      {/* Notification Center */}
+      <NotificationCenter
+        isOpen={notificationOpen}
+        onClose={handleNotificationClose}
+      />
     </>
   );
 };

@@ -31,7 +31,7 @@ const EmptyCart = memo(({ onContinueShopping }) => (
       />
     </svg>
     <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
-      Your Shopping Bag is Empty
+      Your Shopping Bag is not even Empty
     </h2>
     <p className="text-sm md:text-base text-gray-600 mb-6">
       Add some trendy items to your bag to get started!

@@ -104,20 +104,54 @@ export const WishlistProvider = ({ children }) => {
       }
 
       const response = await wishlistApi.getWishlist();
-      const fetchedWishlist = response.data.wishlist?.items || response.data.items || [];
+      console.log('[WishlistContext] fetchWishlist response:', response);
+      console.log('[WishlistContext] response.data:', response.data);
+
+      // Handle the specific API response structure
+      // wishlistApi.getWishlist() returns response.data from axios
+      // So 'response' here is the full API response: { success, message, data: { wishlist: { items } } }
+      let fetchedWishlist = [];
+
+      if (response.data?.wishlist?.items) {
+        // Structure: { data: { wishlist: { items: [...] } } }
+        fetchedWishlist = response.data.wishlist.items;
+        console.log('[WishlistContext] Found items at response.data.wishlist.items');
+      } else if (response.data?.items) {
+        // Structure: { data: { items: [...] } }
+        fetchedWishlist = response.data.items;
+        console.log('[WishlistContext] Found items at response.data.items');
+      } else if (response.wishlist?.items) {
+        // Structure: { wishlist: { items: [...] } }
+        fetchedWishlist = response.wishlist.items;
+        console.log('[WishlistContext] Found items at response.wishlist.items');
+      } else if (response.items) {
+        // Structure: { items: [...] }
+        fetchedWishlist = response.items;
+        console.log('[WishlistContext] Found items at response.items');
+      } else {
+        console.warn('[WishlistContext] Could not find items in response structure');
+      }
+
+      console.log('[WishlistContext] fetchedWishlist:', fetchedWishlist);
+      console.log('[WishlistContext] fetchedWishlist length:', fetchedWishlist?.length);
 
       if (isMounted.current) {
         setWishlist(fetchedWishlist);
         saveWishlistToStorage(fetchedWishlist);
+        console.log('[WishlistContext] Wishlist state updated, length:', fetchedWishlist?.length);
       }
     } catch (error) {
-      console.error('Error fetching wishlist:', error);
+      console.error('[WishlistContext] Error fetching wishlist:', error);
+      console.error('[WishlistContext] Error response:', error.response);
+      console.error('[WishlistContext] Error response status:', error.response?.status);
       if (isMounted.current && error.response?.status !== 404) {
         setWishlist([]);
         clearWishlistFromStorage();
       }
     } finally {
+      console.log('[WishlistContext] fetchWishlist finally block - showLoading:', showLoading, 'isMounted:', isMounted.current);
       if (isMounted.current && showLoading) {
+        console.log('[WishlistContext] Setting loading to false');
         setLoading(false);
       }
     }
@@ -156,23 +190,20 @@ export const WishlistProvider = ({ children }) => {
     const initializeWishlist = async () => {
       try {
         if (isAuthenticated) {
-          const cachedData = loadWishlistFromStorage();
-          if (cachedData && !isCancelled) {
-            setWishlist(cachedData.wishlist);
-          }
+          console.log('[WishlistContext] User is authenticated, fetching wishlist...');
 
-          if (!cachedData && !isCancelled) {
-            setLoading(true);
-          }
-
+          // Always fetch fresh data for authenticated users
+          // Don't rely on cache - it might be stale
           if (!isCancelled) {
+            setLoading(true);
             await mergeGuestWishlist();
           }
 
           if (!isCancelled) {
-            await fetchWishlist(!cachedData);
+            await fetchWishlist(true);
           }
         } else {
+          console.log('[WishlistContext] User is NOT authenticated, loading guest wishlist');
           const guestItems = loadGuestWishlist();
           if (!isCancelled) {
             setWishlist(guestItems || []);
@@ -180,13 +211,20 @@ export const WishlistProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('Error initializing wishlist:', error);
+        console.error('[WishlistContext] Error initializing wishlist:', error);
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      } finally {
+        // Ensure loading is always set to false after initialization
+        console.log('[WishlistContext] initializeWishlist finally block');
         if (!isCancelled) {
           setLoading(false);
         }
       }
     };
 
+    console.log('[WishlistContext] Starting initializeWishlist, isAuthenticated:', isAuthenticated);
     initializeWishlist();
 
     return () => {
@@ -197,6 +235,8 @@ export const WishlistProvider = ({ children }) => {
 
   // Add to wishlist with guest support
   const addToWishlist = useCallback(async (productId) => {
+    console.log('[WishlistContext] addToWishlist called:', { productId, isAuthenticated });
+
     if (!isAuthenticated) {
       // Guest user - store in localStorage
       const guestItems = loadGuestWishlist();
@@ -216,15 +256,18 @@ export const WishlistProvider = ({ children }) => {
 
     // Authenticated user
     try {
+      console.log('[WishlistContext] Calling wishlistApi.addToWishlist...');
       await wishlistApi.addToWishlist(productId);
 
       if (isMounted.current) {
+        console.log('[WishlistContext] Fetching updated wishlist...');
         await fetchWishlist(false);
         toast.success('Added to wishlist!');
       }
 
       return { success: true };
     } catch (error) {
+      console.error('[WishlistContext] Error adding to wishlist:', error);
       const errorMessage = error.response?.data?.message || 'Failed to add to wishlist';
       toast.error(errorMessage);
       return { success: false, error: errorMessage };
@@ -264,17 +307,48 @@ export const WishlistProvider = ({ children }) => {
 
   // Check if product is in wishlist
   const isInWishlist = useCallback((productId) => {
+    console.log('[WishlistContext] isInWishlist check:', {
+      productId,
+      wishlist,
+      isAuthenticated,
+      wishlistLength: wishlist?.length
+    });
+
     if (!isAuthenticated) {
-      return wishlist.includes(productId);
+      const result = wishlist.includes(productId);
+      console.log('[WishlistContext] Guest user check result:', result);
+      return result;
     }
-    return wishlist.some(item => item.product?._id === productId || item === productId);
+
+    const result = wishlist.some(item => {
+      // Convert to strings for comparison (MongoDB ObjectIds)
+      const itemProductId = String(item.product?._id || item.product || item);
+      const targetProductId = String(productId);
+      const matches = itemProductId === targetProductId;
+
+      console.log('[WishlistContext] Checking item:', {
+        itemProductId,
+        targetProductId,
+        matches,
+        rawItem: item
+      });
+      return matches;
+    });
+
+    console.log('[WishlistContext] Authenticated user check result:', result);
+    return result;
   }, [wishlist, isAuthenticated]);
 
   // Toggle wishlist item
   const toggleWishlist = useCallback(async (productId) => {
-    if (isInWishlist(productId)) {
+    const inWishlist = isInWishlist(productId);
+    console.log('[WishlistContext] toggleWishlist:', { productId, inWishlist });
+
+    if (inWishlist) {
+      console.log('[WishlistContext] Removing from wishlist...');
       return removeFromWishlist(productId);
     } else {
+      console.log('[WishlistContext] Adding to wishlist...');
       return addToWishlist(productId);
     }
   }, [addToWishlist, removeFromWishlist, isInWishlist]);

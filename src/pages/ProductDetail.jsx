@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { productApi, reviewApi } from '../api';
 import { useCartActions } from '../context/CartContext';
@@ -24,11 +24,11 @@ const ProductDetail = () => {
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [addingToCart, setAddingToCart] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [loadedImages, setLoadedImages] = useState(new Set());
   const imageScrollRef = useRef(null);
 
-  // Wishlist state (computed from context)
-  const isInWishlist = checkIsInWishlist(id);
+  // Wishlist state - use API response if available, otherwise check context
+  const isInWishlist = product?.isInWishlist ?? checkIsInWishlist(id);
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Reviews state
@@ -54,12 +54,18 @@ const ProductDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    setImageLoaded(false);
-  }, [selectedImage]);
-
-  useEffect(() => {
     fetchReviews();
   }, [reviewsSortBy, reviewsPage]);
+
+  // Memoized image load handler
+  const handleImageLoad = useCallback((index) => {
+    setLoadedImages(prev => {
+      if (prev.has(index)) return prev; // Prevent unnecessary updates
+      const newSet = new Set(prev);
+      newSet.add(index);
+      return newSet;
+    });
+  }, []);
 
   // Scroll handling for image gallery
   const handleImageScroll = (e) => {
@@ -77,12 +83,13 @@ const ProductDetail = () => {
   const scrollToImage = (index) => {
     if (!imageScrollRef.current) return;
 
+    setSelectedImage(index);
+
     const imageWidth = imageScrollRef.current.offsetWidth;
     imageScrollRef.current.scrollTo({
       left: imageWidth * index,
       behavior: 'smooth'
     });
-    setSelectedImage(index);
   };
 
   // Fetch product data
@@ -91,6 +98,9 @@ const ProductDetail = () => {
       setLoading(true);
       const response = await productApi.getProductById(id);
       setProduct(response.data);
+
+      // Reset loaded images when product changes
+      setLoadedImages(new Set());
 
       // Set default selections
       if (response.data.sizes?.length > 0) {
@@ -309,29 +319,31 @@ const ProductDetail = () => {
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {product.images && product.images.length > 0 ? (
-              product.images.map((image, index) => (
-                <div
-                  key={index}
-                  className="relative flex-shrink-0 w-full aspect-[3/4] snap-center"
-                >
-                  {index === selectedImage && !imageLoaded && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-100 animate-pulse flex items-center justify-center">
-                      <svg className="w-20 h-20 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-                  <img
-                    src={image || 'https://via.placeholder.com/600x800?text=No+Image'}
-                    alt={`${product.name} - Image ${index + 1}`}
-                    loading={index === 0 ? 'eager' : 'lazy'}
-                    onLoad={() => index === selectedImage && setImageLoaded(true)}
-                    className={`w-full h-full object-contain transition-opacity duration-300 ${
-                      index === selectedImage && imageLoaded ? 'opacity-100' : index === selectedImage ? 'opacity-0' : 'opacity-100'
-                    }`}
-                  />
-                </div>
-              ))
+              product.images.map((image, index) => {
+                const isLoaded = loadedImages.has(index);
+
+                return (
+                  <div
+                    key={index}
+                    className="relative flex-shrink-0 w-full aspect-[3/4] snap-center bg-gray-50"
+                  >
+                    <img
+                      src={image || 'https://via.placeholder.com/600x800?text=No+Image'}
+                      alt={`${product.name} - Image ${index + 1}`}
+                      loading={index <= 1 ? 'eager' : 'lazy'}
+                      onLoad={() => handleImageLoad(index)}
+                      ref={(img) => {
+                        // For cached images, mark as loaded immediately
+                        if (img?.complete && img?.naturalHeight > 0 && !isLoaded) {
+                          handleImageLoad(index);
+                        }
+                      }}
+                      className="w-full h-full object-contain transition-opacity duration-200"
+                      style={{ opacity: isLoaded ? 1 : 0 }}
+                    />
+                  </div>
+                );
+              })
             ) : (
               <div className="relative flex-shrink-0 w-full aspect-[3/4] snap-center bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
@@ -412,22 +424,52 @@ const ProductDetail = () => {
             {product.name}
           </h1>
 
-          {/* Price */}
-          <div className="flex items-baseline space-x-2 mb-4">
-            <span className="text-2xl md:text-3xl font-bold text-gray-900">
-              ₹{Math.round(discountedPrice)}
-            </span>
-            {product.discount > 0 && (
-              <>
-                <span className="text-base text-gray-400 line-through">
-                  ₹{Math.round(product.price)}
-                </span>
-                <span className="text-sm font-semibold text-green-600">
-                  {product.discount}% OFF
-                </span>
-              </>
-            )}
+          {/* Price & Quantity */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-baseline space-x-2">
+              <span className="text-2xl md:text-3xl font-bold text-gray-900">
+                ₹{Math.round(discountedPrice)}
+              </span>
+              {product.discount > 0 && (
+                <>
+                  <span className="text-base text-gray-400 line-through">
+                    ₹{Math.round(product.price)}
+                  </span>
+                  <span className="text-sm font-semibold text-green-600">
+                    {product.discount}% OFF
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Quantity Selector */}
+            <div className="inline-flex items-center border border-gray-300 rounded-md">
+              <button
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                disabled={quantity <= 1}
+                className="px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 text-sm"
+              >
+                −
+              </button>
+              <span className="px-4 py-1.5 border-x border-gray-300 font-medium text-gray-900 text-sm min-w-[45px] text-center">
+                {quantity}
+              </span>
+              <button
+                onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
+                disabled={quantity >= availableStock}
+                className="px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 text-sm"
+              >
+                +
+              </button>
+            </div>
           </div>
+
+          {/* Stock Warning */}
+          {availableStock > 0 && availableStock <= 10 && (
+            <p className="text-xs text-orange-600 mb-4">
+              Only {availableStock} left in stock!
+            </p>
+          )}
 
           {/* Rating Summary */}
           {reviewStats && (
@@ -456,17 +498,17 @@ const ProductDetail = () => {
 
           {/* Size Selection */}
           {product.sizes?.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Size</h3>
-              <div className="flex flex-wrap gap-2">
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-gray-700 mb-2">Size</h3>
+              <div className="flex flex-wrap gap-1.5">
                 {product.sizes.map((size) => (
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`min-w-[48px] px-4 py-2.5 text-sm font-medium rounded-lg border-2 transition-all ${
+                    className={`min-w-[40px] px-3 py-1.5 text-xs font-medium rounded-md border transition-all ${
                       selectedSize === size
-                        ? 'border-pink-600 bg-pink-50 text-pink-600'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                        ? 'border-pink-600 bg-pink-600 text-white shadow-sm'
+                        : 'border-gray-300 text-gray-700 hover:border-pink-300 hover:bg-pink-50'
                     }`}
                   >
                     {size}
@@ -478,84 +520,50 @@ const ProductDetail = () => {
 
           {/* Color Selection */}
           {product.colors?.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">Color</h3>
+            <div className="mb-4">
+              <h3 className="text-xs font-semibold text-gray-700 mb-2">
+                Color: <span className="font-normal text-gray-900">{selectedColor}</span>
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {product.colors.map((color) => (
                   <button
                     key={color._id || color.name}
                     onClick={() => setSelectedColor(color.name)}
-                    className={`px-4 py-2.5 text-sm font-medium rounded-lg border-2 transition-all ${
+                    className={`w-8 h-8 rounded-full border-2 transition-all ${
                       selectedColor === color.name
-                        ? 'border-pink-600 bg-pink-50 text-pink-600'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                        ? 'border-pink-600 ring-2 ring-pink-200'
+                        : 'border-gray-300 hover:border-gray-400'
                     }`}
-                    style={{
-                      backgroundColor: selectedColor === color.name ? color.hexCode + '20' : 'transparent'
-                    }}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div
-                        className="w-4 h-4 rounded-full border border-gray-300"
-                        style={{ backgroundColor: color.hexCode }}
-                      />
-                      <span>{color.name}</span>
-                    </div>
-                  </button>
+                    style={{ backgroundColor: color.hexCode }}
+                    title={color.name}
+                    aria-label={`Select ${color.name} color`}
+                  />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Quantity */}
-          <div className="mb-6 pb-6 border-b">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Quantity</h3>
-            <div className="inline-flex items-center border-2 border-gray-300 rounded-lg overflow-hidden">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                disabled={quantity <= 1}
-                className="px-4 py-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 font-semibold"
-              >
-                −
-              </button>
-              <span className="px-6 py-2 border-x-2 border-gray-300 font-semibold text-gray-900 min-w-[60px] text-center">
-                {quantity}
-              </span>
-              <button
-                onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
-                disabled={quantity >= availableStock}
-                className="px-4 py-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-700 font-semibold"
-              >
-                +
-              </button>
+          {/* Brand & Material - Compact Display */}
+          {(product.brand || product.material) && (
+            <div className="flex items-center gap-6 mb-4 pb-4 border-b text-sm">
+              {product.brand && (
+                <div>
+                  <span className="text-xs text-gray-500 block">Brand</span>
+                  <span className="font-medium text-gray-900">{product.brand}</span>
+                </div>
+              )}
+              {product.material && (
+                <div>
+                  <span className="text-xs text-gray-500 block">Material</span>
+                  <span className="font-medium text-gray-900">{product.material}</span>
+                </div>
+              )}
             </div>
-            {availableStock > 0 && availableStock <= 10 && (
-              <p className="text-xs text-orange-600 mt-2">
-                Only {availableStock} left in stock!
-              </p>
-            )}
-          </div>
-
-          {/* Product Info */}
-          <div className="space-y-3 mb-6">
-            {product.brand && (
-              <div className="flex items-center text-sm">
-                <span className="text-gray-500 w-24">Brand</span>
-                <span className="font-medium text-gray-900">{product.brand}</span>
-              </div>
-            )}
-            {product.material && (
-              <div className="flex items-center text-sm">
-                <span className="text-gray-500 w-24">Material</span>
-                <span className="font-medium text-gray-900">{product.material}</span>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Delivery Check */}
-          <div className="mb-6 pb-6 border-b">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Check Delivery</h3>
-            <PincodeChecker productId={product._id} />
+          <div className="mb-6">
+            <PincodeChecker productId={product._id} compact={true} />
           </div>
 
           {/* Desktop Action Buttons */}
@@ -807,11 +815,11 @@ const ProductDetail = () => {
             className="px-4 py-3 border-2 border-pink-600 text-pink-600 rounded-lg font-semibold hover:bg-pink-50 transition-all disabled:opacity-50"
           >
             {isInWishlist ? (
-              <svg className="w-6 h-6 fill-current" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-red-500 fill-current" viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
             ) : (
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             )}

@@ -450,7 +450,7 @@ export const cartApi = {
       throw new Error('Product ID is required');
     }
 
-    const response = await axiosInstance.post('/cart/items', item, {
+    const response = await axiosInstance.post('/cart', item, {
       skipCache: true,
       timeout: 15000
     });
@@ -473,7 +473,7 @@ export const cartApi = {
       throw new Error('Quantity must be positive');
     }
 
-    const response = await axiosInstance.put(`/cart/items/${itemId}`,
+    const response = await axiosInstance.put(`/cart/${itemId}`,
       { quantity },
       {
         skipCache: true,
@@ -496,7 +496,7 @@ export const cartApi = {
       throw new Error('Item ID is required');
     }
 
-    const response = await axiosInstance.delete(`/cart/items/${itemId}`, {
+    const response = await axiosInstance.delete(`/cart/${itemId}`, {
       skipCache: true,
       timeout: 10000
     });
@@ -601,6 +601,19 @@ export const orderApi = {
   },
 
   /**
+   * Advanced search orders with filters (User)
+   * Short-term caching (30 seconds)
+   */
+  searchOrders: async (queryString = '', options = {}) => {
+    const response = await axiosInstance.get(`/orders/search?${queryString}`, {
+      cacheTTL: 30000, // 30 seconds cache
+      skipCache: options.skipCache || false,
+      timeout: 20000
+    });
+    return response.data;
+  },
+
+  /**
    * Get order by ID
    * Short-term caching (1 minute) - order status changes
    */
@@ -618,7 +631,7 @@ export const orderApi = {
   },
 
   /**
-   * Cancel order
+   * Cancel order (legacy method - kept for backward compatibility)
    * No caching - mutation operation
    */
   cancelOrder: async (id, reason = '') => {
@@ -641,6 +654,95 @@ export const orderApi = {
   },
 
   /**
+   * Request order cancellation (comprehensive system)
+   * No caching - mutation operation
+   */
+  requestCancellation: async (orderId, cancellationData) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    if (!cancellationData.reason) {
+      throw new Error('Cancellation reason is required');
+    }
+
+    const response = await axiosInstance.post(`/orders/${orderId}/cancel`, cancellationData, {
+      skipCache: true,
+      timeout: 15000
+    });
+
+    invalidateCache.orders();
+    return response.data;
+  },
+
+  /**
+   * Request partial order cancellation
+   * No caching - mutation operation
+   */
+  requestPartialCancellation: async (orderId, cancellationData) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    if (!cancellationData.items || !Array.isArray(cancellationData.items) || cancellationData.items.length === 0) {
+      throw new Error('Items to cancel are required');
+    }
+
+    const response = await axiosInstance.post(`/orders/${orderId}/cancel-items`, cancellationData, {
+      skipCache: true,
+      timeout: 15000
+    });
+
+    invalidateCache.orders();
+    return response.data;
+  },
+
+  /**
+   * Check if order can be cancelled
+   * Short-term caching
+   */
+  checkCancellationEligibility: async (orderId, options = {}) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const response = await axiosInstance.get(`/orders/${orderId}/can-cancel`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 10000
+    });
+
+    return response.data;
+  },
+
+  /**
+   * Modify order (items, address, quantities)
+   * No caching - mutation operation
+   */
+  modifyOrder: async (id, modificationData) => {
+    if (!id) {
+      throw new Error('Order ID is required');
+    }
+    if (!modificationData || Object.keys(modificationData).length === 0) {
+      throw new Error('Modification data is required');
+    }
+
+    const response = await axiosInstance.put(`/orders/${id}/modify`, modificationData, {
+      skipCache: true,
+      timeout: 30000 // Longer timeout for complex operations
+    });
+
+    // Invalidate order cache
+    invalidateCache.orders();
+    // May need to invalidate cart if items were added
+    if (modificationData.itemsToAdd) {
+      invalidateCache.cart();
+    }
+
+    return response.data;
+  },
+
+  /**
    * Get order tracking information
    * Short-term caching (1 minute)
    */
@@ -653,6 +755,54 @@ export const orderApi = {
       cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
       skipCache: options.skipCache || false,
       timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Track order by tracking number (public endpoint)
+   * Short-term caching (1 minute)
+   */
+  trackByTrackingNumber: async (trackingNumber, options = {}) => {
+    if (!trackingNumber) {
+      throw new Error('Tracking number is required');
+    }
+
+    const response = await axiosInstance.get(`/orders/track/${trackingNumber}`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get shipment details with full tracking history
+   * Short-term caching (1 minute)
+   */
+  getShipmentDetails: async (orderId, options = {}) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const response = await axiosInstance.get(`/orders/${orderId}/shipment`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get all user shipments
+   * Short-term caching (1 minute)
+   */
+  getMyShipments: async (params = {}, options = {}) => {
+    const response = await axiosInstance.get('/orders/shipments', {
+      params,
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 20000
     });
     return response.data;
   },
@@ -692,6 +842,119 @@ export const orderApi = {
     invalidateCache.cart();
 
     return response.data;
+  },
+
+  /**
+   * Get order timeline
+   * Short-term caching (1 minute)
+   */
+  getOrderTimeline: async (orderId, options = {}) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const response = await axiosInstance.get(`/orders/${orderId}/timeline`, {
+      params: options.params || {},
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get order milestones
+   * Short-term caching (1 minute)
+   */
+  getOrderMilestones: async (orderId, options = {}) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const response = await axiosInstance.get(`/orders/${orderId}/timeline/milestones`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Add note to order timeline
+   * No caching - mutation operation
+   */
+  addOrderNote: async (orderId, note, isImportant = false) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+    if (!note) {
+      throw new Error('Note is required');
+    }
+
+    const response = await axiosInstance.post(`/orders/${orderId}/timeline/note`, {
+      note,
+      isImportant
+    }, {
+      skipCache: true,
+      timeout: 15000
+    });
+
+    // Invalidate order cache
+    invalidateCache.orders();
+
+    return response.data;
+  },
+
+  /**
+   * Get order activity logs (Admin only)
+   * Short-term caching (1 minute)
+   */
+  getOrderActivityLogs: async (orderId, options = {}) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const response = await axiosInstance.get(`/orders/${orderId}/activity-logs`, {
+      params: options.params || {},
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Export order timeline as PDF
+   * No caching
+   */
+  exportTimelinePDF: async (orderId) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const response = await axiosInstance.get(`/orders/${orderId}/timeline/export/pdf`, {
+      skipCache: true,
+      timeout: 20000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get timeline summary for multiple orders
+   * Short-term caching (1 minute)
+   */
+  getTimelineSummary: async (orderIds, options = {}) => {
+    if (!orderIds || !Array.isArray(orderIds)) {
+      throw new Error('Order IDs array is required');
+    }
+
+    const response = await axiosInstance.get('/orders/timeline/summary', {
+      params: { orderIds: orderIds.join(',') },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
   }
 };
 
@@ -699,6 +962,104 @@ export const orderApi = {
 // Payment API
 // ============================================================================
 
+/**
+ * ============================================
+ * RETURN API
+ * ============================================
+ */
+export const returnApi = {
+  /**
+   * Create return request
+   * No caching - mutation operation
+   */
+  createReturnRequest: async (returnData) => {
+    if (!returnData) {
+      throw new Error('Return data is required');
+    }
+
+    const response = await axiosInstance.post('/returns', returnData, {
+      skipCache: true,
+      timeout: 30000
+    });
+
+    // Invalidate order and return caches
+    invalidateCache.orders();
+    invalidateCache.custom('returns');
+
+    return response.data;
+  },
+
+  /**
+   * Get user's returns with filters
+   * Short-term caching (1 minute)
+   */
+  getUserReturns: async (params = {}, options = {}) => {
+    const response = await axiosInstance.get('/returns', {
+      params,
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get return by ID
+   * Short-term caching (1 minute)
+   */
+  getReturnById: async (id, options = {}) => {
+    if (!id) {
+      throw new Error('Return ID is required');
+    }
+
+    const response = await axiosInstance.get(`/returns/${id}`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Check return eligibility for order
+   * Short-term caching (1 minute)
+   */
+  checkReturnEligibility: async (orderId, options = {}) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const response = await axiosInstance.get(`/returns/check-eligibility/${orderId}`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 10000
+    });
+    return response.data;
+  },
+
+  /**
+   * Cancel return request
+   * No caching - mutation operation
+   */
+  cancelReturnRequest: async (id, reason = '') => {
+    if (!id) {
+      throw new Error('Return ID is required');
+    }
+
+    const response = await axiosInstance.post(`/returns/${id}/cancel`,
+      { reason },
+      {
+        skipCache: true,
+        timeout: 15000
+      }
+    );
+
+    // Invalidate return cache
+    invalidateCache.custom('returns');
+
+    return response.data;
+  }
+};
 export const paymentApi = {
   /**
    * Get payment methods
@@ -782,7 +1143,7 @@ export const wishlistApi = {
    * No caching - mutation operation
    */
   addToWishlist: async (productId) => {
-    const response = await axiosInstance.post('/wishlist/items',
+    const response = await axiosInstance.post('/wishlist',
       { productId },
       {
         skipCache: true,
@@ -801,7 +1162,7 @@ export const wishlistApi = {
    * No caching - mutation operation
    */
   removeFromWishlist: async (productId) => {
-    const response = await axiosInstance.delete(`/wishlist/items/${productId}`, {
+    const response = await axiosInstance.delete(`/wishlist/${productId}`, {
       skipCache: true,
       timeout: 10000
     });
@@ -1113,7 +1474,7 @@ export const pincodeApi = {
       throw new Error('Pincode is required');
     }
 
-    const response = await axiosInstance.post('/api/pincode/check',
+    const response = await axiosInstance.post('/pincode/check',
       { pincode },
       {
         cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
@@ -1137,7 +1498,7 @@ export const pincodeApi = {
       throw new Error('Product ID is required');
     }
 
-    const response = await axiosInstance.post('/api/pincode/check-product',
+    const response = await axiosInstance.post('/pincode/check-product',
       { pincode, productId },
       {
         cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
@@ -1146,6 +1507,332 @@ export const pincodeApi = {
       }
     );
 
+    return response.data;
+  }
+};
+
+// ============================================================================
+// Shipping API (User-facing tracking)
+// ============================================================================
+
+export const shippingApi = {
+  /**
+   * Get user's shipments
+   * Short-term caching (1 minute) - shipment status changes frequently
+   */
+  getMyShipments: async (params = {}, options = {}) => {
+    const response = await axiosInstance.get('/shipping/my-shipments', {
+      params,
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Track shipment by ID (authenticated)
+   * Short-term caching (1 minute)
+   */
+  trackShipment: async (shipmentId, options = {}) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.get(`/shipping/${shipmentId}/track`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Track shipment by tracking number (public - no auth required)
+   * Short-term caching (1 minute)
+   */
+  trackByTrackingNumber: async (trackingNumber, options = {}) => {
+    if (!trackingNumber) {
+      throw new Error('Tracking number is required');
+    }
+
+    const response = await axiosInstance.get('/shipping/track', {
+      params: { trackingNumber },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get tracking history for a shipment
+   * Short-term caching (1 minute)
+   */
+  getTrackingHistory: async (shipmentId, options = {}) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.get(`/shipping/${shipmentId}/tracking-history`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get shipment details by order ID
+   * Short-term caching (1 minute)
+   */
+  getShipmentByOrderId: async (orderId, options = {}) => {
+    if (!orderId) {
+      throw new Error('Order ID is required');
+    }
+
+    const response = await axiosInstance.get(`/shipping/order/${orderId}`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get estimated delivery date
+   * Medium-term caching (5 minutes)
+   */
+  getEstimatedDelivery: async (shipmentId, options = {}) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.get(`/shipping/${shipmentId}/estimated-delivery`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.MEDIUM,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Request delivery reschedule
+   * No caching - mutation operation
+   */
+  requestReschedule: async (shipmentId, rescheduleData) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.post(`/shipping/${shipmentId}/reschedule`, rescheduleData, {
+      skipCache: true,
+      timeout: 15000
+    });
+
+    // Invalidate shipment cache
+    cacheManager.invalidate('/shipping');
+
+    return response.data;
+  },
+
+  /**
+   * Cancel shipment/delivery
+   * No caching - mutation operation
+   */
+  cancelShipment: async (shipmentId, reason = '') => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.post(`/shipping/${shipmentId}/cancel`,
+      { reason },
+      {
+        skipCache: true,
+        timeout: 15000
+      }
+    );
+
+    // Invalidate shipment cache
+    cacheManager.invalidate('/shipping');
+
+    return response.data;
+  },
+
+  /**
+   * Report delivery issue
+   * No caching - mutation operation
+   */
+  reportIssue: async (shipmentId, issueData) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.post(`/shipping/${shipmentId}/report-issue`, issueData, {
+      skipCache: true,
+      timeout: 15000
+    });
+
+    return response.data;
+  },
+
+  /**
+   * Confirm delivery receipt
+   * No caching - mutation operation
+   */
+  confirmDelivery: async (shipmentId, confirmationData) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.post(`/shipping/${shipmentId}/confirm-delivery`, confirmationData, {
+      skipCache: true,
+      timeout: 15000
+    });
+
+    // Invalidate shipment cache
+    cacheManager.invalidate('/shipping');
+
+    return response.data;
+  },
+
+  /**
+   * Subscribe to shipment notifications
+   * No caching - mutation operation
+   */
+  subscribeNotifications: async (shipmentId, notificationPreferences) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.post(`/shipping/${shipmentId}/subscribe`, notificationPreferences, {
+      skipCache: true,
+      timeout: 10000
+    });
+
+    return response.data;
+  },
+
+  /**
+   * Unsubscribe from shipment notifications
+   * No caching - mutation operation
+   */
+  unsubscribeNotifications: async (shipmentId) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.post(`/shipping/${shipmentId}/unsubscribe`, null, {
+      skipCache: true,
+      timeout: 10000
+    });
+
+    return response.data;
+  },
+
+  /**
+   * Get delivery instructions
+   * Medium-term caching (5 minutes)
+   */
+  getDeliveryInstructions: async (shipmentId, options = {}) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.get(`/shipping/${shipmentId}/delivery-instructions`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.MEDIUM,
+      skipCache: options.skipCache || false,
+      timeout: 10000
+    });
+    return response.data;
+  },
+
+  /**
+   * Update delivery instructions
+   * No caching - mutation operation
+   */
+  updateDeliveryInstructions: async (shipmentId, instructions) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.put(`/shipping/${shipmentId}/delivery-instructions`,
+      { instructions },
+      {
+        skipCache: true,
+        timeout: 15000
+      }
+    );
+
+    // Invalidate shipment cache
+    cacheManager.invalidate('/shipping');
+
+    return response.data;
+  },
+
+  /**
+   * Get proof of delivery
+   * Medium-term caching (5 minutes) - proof doesn't change once uploaded
+   */
+  getProofOfDelivery: async (shipmentId, options = {}) => {
+    if (!shipmentId) {
+      throw new Error('Shipment ID is required');
+    }
+
+    const response = await axiosInstance.get(`/shipping/${shipmentId}/proof-of-delivery`, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.MEDIUM,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Check delivery availability for pincode
+   * Short-term caching (1 minute)
+   */
+  checkDeliveryAvailability: async (pincode, options = {}) => {
+    if (!pincode) {
+      throw new Error('Pincode is required');
+    }
+
+    const response = await axiosInstance.get('/shipping/check-availability', {
+      params: { pincode },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Calculate shipping cost
+   * Short-term caching (1 minute)
+   */
+  calculateShippingCost: async (shippingData, options = {}) => {
+    const response = await axiosInstance.post('/shipping/calculate-cost', shippingData, {
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
+    return response.data;
+  },
+
+  /**
+   * Get delivery time slots
+   * Short-term caching (1 minute)
+   */
+  getDeliveryTimeSlots: async (pincode, date, options = {}) => {
+    if (!pincode) {
+      throw new Error('Pincode is required');
+    }
+
+    const response = await axiosInstance.get('/shipping/time-slots', {
+      params: { pincode, date },
+      cacheTTL: axiosInstance.CACHE_STRATEGIES.SHORT,
+      skipCache: options.skipCache || false,
+      timeout: 15000
+    });
     return response.data;
   }
 };
@@ -1233,6 +1920,8 @@ export default {
   notification: notificationApi,
   banner: bannerApi,
   pincode: pincodeApi,
+  shipping: shippingApi,
+  return: returnApi,
   utils: {
     batchFetch,
     prefetch,

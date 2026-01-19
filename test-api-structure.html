@@ -1,0 +1,48 @@
+<\!DOCTYPE html>
+<html>
+<head>
+    <title>API Structure Test</title>
+</head>
+<body>
+    <h1>Testing API Response Structure</h1>
+    <button onclick="testWishlist()">Test Wishlist API</button>
+    <button onclick="testCart()">Test Cart API</button>
+    <pre id="output"></pre>
+
+    <script>
+        async function testWishlist() {
+            const output = document.getElementById('output');
+            try {
+                const response = await fetch('http://localhost:5000/api/wishlist', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                output.textContent = 'Wishlist Response:\n' + JSON.stringify(data, null, 2);
+                console.log('Full response:', data);
+                console.log('data.data:', data.data);
+                console.log('data.data.wishlist:', data.data.wishlist);
+                console.log('data.data.wishlist.items:', data.data.wishlist?.items);
+            } catch (err) {
+                output.textContent = 'Error: ' + err.message;
+            }
+        }
+
+        async function testCart() {
+            const output = document.getElementById('output');
+            try {
+                const response = await fetch('http://localhost:5000/api/cart', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                output.textContent = 'Cart Response:\n' + JSON.stringify(data, null, 2);
+                console.log('Full response:', data);
+                console.log('data.data:', data.data);
+                console.log('data.data.cart:', data.data.cart);
+                console.log('data.data.cart.items:', data.data.cart?.items);
+            } catch (err) {
+                output.textContent = 'Error: ' + err.message;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -743,10 +743,10 @@ const Profile = () => {
 
             {/* Order Filters */}
             <div className="p-6 border-b border-gray-200">
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => setOrderFilter('all')}
-                  className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
                     orderFilter === 'all'
                       ? 'bg-pink-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -756,7 +756,7 @@ const Profile = () => {
                 </button>
                 <button
                   onClick={() => setOrderFilter('pending')}
-                  className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
                     orderFilter === 'pending'
                       ? 'bg-pink-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -766,7 +766,7 @@ const Profile = () => {
                 </button>
                 <button
                   onClick={() => setOrderFilter('delivered')}
-                  className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
                     orderFilter === 'delivered'
                       ? 'bg-pink-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -776,7 +776,7 @@ const Profile = () => {
                 </button>
                 <button
                   onClick={() => setOrderFilter('cancelled')}
-                  className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-lg font-medium transition ${
                     orderFilter === 'cancelled'
                       ? 'bg-pink-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

@@ -135,7 +135,14 @@ export const CartProvider = ({ children }) => {
       }
 
       const response = await cartApi.getCart();
-      const fetchedCart = response.data.cart;
+      console.log('[CartContext] fetchCart response:', response);
+      console.log('[CartContext] response.data:', response.data);
+
+      // API returns: { success, message, data: { cart: { items: [...] } } }
+      // cartApi.getCart() returns the full response, so:
+      // response.data = { cart: { items: [...] } }
+      const fetchedCart = response.data?.cart || response.cart || null;
+      console.log('[CartContext] fetchedCart:', fetchedCart);
 
       if (isMounted.current) {
         setCart(fetchedCart);
@@ -145,14 +152,18 @@ export const CartProvider = ({ children }) => {
         saveCartToStorage(fetchedCart, totals.totalItems, totals.total);
       }
     } catch (error) {
-      console.error('Error fetching cart:', error);
+      console.error('[CartContext] Error fetching cart:', error);
+      console.error('[CartContext] Error response status:', error.response?.status);
       if (isMounted.current && error.response?.status === 404) {
         // No cart exists yet
+        console.log('[CartContext] Cart not found (404), setting cart to null');
         setCart(null);
         clearCartFromStorage();
       }
     } finally {
+      console.log('[CartContext] fetchCart finally block - showLoading:', showLoading, 'isMounted:', isMounted.current);
       if (isMounted.current && showLoading) {
+        console.log('[CartContext] Setting loading to false');
         setLoading(false);
       }
     }
@@ -201,27 +212,21 @@ export const CartProvider = ({ children }) => {
     const initializeCart = async () => {
       try {
         if (isAuthenticated) {
-          // User is logged in
-          const cachedData = loadCartFromStorage();
-          if (cachedData && !isCancelled) {
-            setCart(cachedData.cart);
-          }
+          console.log('[CartContext] User is authenticated, fetching cart...');
 
-          // Only show loading if no cached data
-          if (!cachedData && !isCancelled) {
-            setLoading(true);
-          }
-
-          // Merge guest cart if exists
+          // Always fetch fresh data for authenticated users
+          // Don't rely on cache - it might be stale
           if (!isCancelled) {
+            setLoading(true);
             await mergeGuestCart();
           }
 
           // Fetch fresh data
           if (!isCancelled) {
-            await fetchCart(!cachedData);
+            await fetchCart(true);
           }
         } else {
+          console.log('[CartContext] User is NOT authenticated, loading guest cart');
           // User is not logged in - load guest cart
           const guestItems = loadGuestCart();
 
@@ -241,13 +246,20 @@ export const CartProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('Error initializing cart:', error);
+        console.error('[CartContext] Error initializing cart:', error);
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      } finally {
+        // Ensure loading is always set to false after initialization
+        console.log('[CartContext] initializeCart finally block');
         if (!isCancelled) {
           setLoading(false);
         }
       }
     };
 
+    console.log('[CartContext] Starting initializeCart, isAuthenticated:', isAuthenticated);
     initializeCart();
 
     return () => {
@@ -316,7 +328,7 @@ export const CartProvider = ({ children }) => {
       pendingUpdates.current++;
 
       const response = await cartApi.addToCart({ productId, quantity, size, color });
-      const updatedCart = response.data.cart;
+      const updatedCart = response.data.data?.cart || response.data.cart;
 
       if (isMounted.current) {
         setCart(updatedCart);
@@ -378,7 +390,7 @@ export const CartProvider = ({ children }) => {
           pendingUpdates.current++;
 
           const response = await cartApi.updateCartItem(itemId, quantity);
-          const updatedCart = response.data.cart;
+          const updatedCart = response.data.data?.cart || response.data.cart;
 
           if (isMounted.current) {
             setCart(updatedCart);
@@ -421,7 +433,7 @@ export const CartProvider = ({ children }) => {
       pendingUpdates.current++;
 
       const response = await cartApi.removeFromCart(itemId);
-      const updatedCart = response.data.cart;
+      const updatedCart = response.data.data?.cart || response.data.cart;
 
       if (isMounted.current) {
         setCart(updatedCart);
@@ -480,8 +492,10 @@ export const CartProvider = ({ children }) => {
     if (!cart || !cart.items) return 0;
 
     const item = cart.items.find(item => {
-      const itemProductId = item.product?._id || item.product;
-      return itemProductId === productId;
+      // Convert to strings for comparison (MongoDB ObjectIds)
+      const itemProductId = String(item.product?._id || item.product);
+      const targetProductId = String(productId);
+      return itemProductId === targetProductId;
     });
     return item ? item.quantity : 0;
   }, [cart]);
@@ -490,8 +504,10 @@ export const CartProvider = ({ children }) => {
   const isInCart = useCallback((productId) => {
     if (!cart || !cart.items) return false;
     return cart.items.some(item => {
-      const itemProductId = item.product?._id || item.product;
-      return itemProductId === productId;
+      // Convert to strings for comparison (MongoDB ObjectIds)
+      const itemProductId = String(item.product?._id || item.product);
+      const targetProductId = String(productId);
+      return itemProductId === targetProductId;
     });
   }, [cart]);
 
@@ -528,6 +544,7 @@ export const CartProvider = ({ children }) => {
 
 // Hook to use cart state
 export const useCart = () => {
+  console.log("cart moubted")
   const context = useContext(CartContext);
   if (!context) {
     throw new Error('useCart must be used within a CartProvider');

@@ -155,10 +155,17 @@ const Products = () => {
           sort: searchParams.get('sort') || '-createdAt'
         };
 
+        console.log('[Products] fetchProducts - searchParams:', Object.fromEntries(searchParams));
+        console.log('[Products] fetchProducts - params before cleanup:', params);
+
         // Remove undefined params
         Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
 
+        console.log('[Products] fetchProducts - params after cleanup:', params);
+        console.log('[Products] Calling productApi.getProducts with params:', params);
+
         const response = await productApi.getProducts(params);
+        console.log('[Products] API response:', response);
         setProducts(response.data.products || []);
         setPagination(response.data.pagination || {
           page: 1,

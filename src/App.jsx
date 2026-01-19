@@ -48,8 +48,17 @@ const Checkout = lazy(() =>
 const OrderHistory = lazy(() =>
   import(/* webpackChunkName: "page-order-history" */ './pages/OrderHistory')
 );
+const OrderDetails = lazy(() =>
+  import(/* webpackChunkName: "page-order-details" */ './pages/OrderDetails')
+);
 const Profile = lazy(() =>
   import(/* webpackChunkName: "page-profile" */ './pages/Profile')
+);
+const TrackOrder = lazy(() =>
+  import(/* webpackChunkName: "page-track-order" */ './pages/TrackOrder')
+);
+const MyShipments = lazy(() =>
+  import(/* webpackChunkName: "page-my-shipments" */ './pages/MyShipments')
 );
 
 function AppContent() {
@@ -86,6 +95,7 @@ function AppContent() {
               <Route path="/products/:id" element={<ProductDetail />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/wishlist" element={<Wishlist />} />
+              <Route path="/track" element={<TrackOrder />} />
               <Route
                 path="/checkout"
                 element={
@@ -99,6 +109,22 @@ function AppContent() {
                 element={
                   <PrivateRoute>
                     <OrderHistory />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/orders/:id"
+                element={
+                  <PrivateRoute>
+                    <OrderDetails />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/shipments"
+                element={
+                  <PrivateRoute>
+                    <MyShipments />
                   </PrivateRoute>
                 }
               />

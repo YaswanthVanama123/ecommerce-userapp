@@ -21,6 +21,7 @@ const Wishlist = () => {
     const fetchProductDetails = async () => {
       if (!wishlist || wishlist.length === 0) {
         setProducts([]);
+        setLoadingProducts(false);
         return;
       }
 
@@ -29,12 +30,31 @@ const Wishlist = () => {
         // For authenticated users, wishlist items are objects with product details
         // For guest users, wishlist items are just product IDs
         if (isAuthenticated && wishlist[0]?.product) {
-          // Items already have product details
-          const productList = wishlist.map(item => ({
-            ...item.product,
-            wishlistItemId: item._id,
-            addedAt: item.addedAt
-          }));
+          // Items already have product details - map them properly
+          const productList = wishlist.map(item => {
+            const product = item.product;
+            // Calculate discount percentage if discountPrice exists
+            let discount = 0;
+            if (product.discountPrice && product.price > product.discountPrice) {
+              discount = Math.round(((product.price - product.discountPrice) / product.price) * 100);
+            }
+
+            // Calculate total stock
+            let totalStock = 0;
+            if (Array.isArray(product.stock)) {
+              totalStock = product.stock.reduce((sum, s) => sum + (s.quantity || 0), 0);
+            } else if (typeof product.stock === 'number') {
+              totalStock = product.stock;
+            }
+
+            return {
+              ...product,
+              discount, // Add calculated discount percentage
+              stock: totalStock, // Convert stock array to total number
+              wishlistItemId: item._id,
+              addedAt: item.addedAt
+            };
+          });
           setProducts(productList);
         } else if (!isAuthenticated && typeof wishlist[0] === 'string') {
           // Guest wishlist - need to fetch product details
@@ -52,10 +72,6 @@ const Wishlist = () => {
         } else if (!isAuthenticated && wishlist[0]?.name) {
           // Guest wishlist with full product data
           setProducts(wishlist);
-        } else if (!isAuthenticated) {
-          // Guest wishlist but no items or invalid format - reset
-          console.warn('Guest wishlist has invalid format:', wishlist);
-          setProducts([]);
         } else {
           setProducts([]);
         }
@@ -110,12 +126,18 @@ const Wishlist = () => {
     });
   };
 
-  const calculateDiscountedPrice = (price, discount) => {
-    if (!discount || discount === 0) return price;
-    return price - (price * discount) / 100;
+  const calculateDiscountedPrice = (product) => {
+    // Use discountPrice if available, otherwise calculate from discount percentage
+    if (product.discountPrice && product.discountPrice > 0) {
+      return product.discountPrice;
+    }
+    if (product.discount && product.discount > 0) {
+      return product.price - (product.price * product.discount) / 100;
+    }
+    return product.price;
   };
 
-  // Loading state
+  // Loading state - show loader while fetching
   if (loading || loadingProducts) {
     return (
       <div className="min-h-screen bg-gray-50 pt-6 pb-24 lg:pb-8">
@@ -144,8 +166,8 @@ const Wishlist = () => {
     );
   }
 
-  // Empty state
-  if (isEmpty || products.length === 0) {
+  // Empty state - only show after loading is complete
+  if (!loading && !loadingProducts && products.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 pt-6 pb-24 lg:pb-8">
         <div className="max-w-7xl mx-auto px-4">
@@ -169,7 +191,7 @@ const Wishlist = () => {
                 d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
               />
             </svg>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">Your wishlist is empty</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Your wishlist is not empty</h2>
             <p className="text-gray-600 mb-6 text-center max-w-md">
               Save your favorite items to your wishlist and shop them later!
             </p>
@@ -212,7 +234,7 @@ const Wishlist = () => {
         {/* Wishlist Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {products.map((product) => {
-            const discountedPrice = calculateDiscountedPrice(product.price, product.discount);
+            const discountedPrice = calculateDiscountedPrice(product);
             const isRemoving = removingItems.has(product._id);
             const isAdding = addingToCart.has(product._id);
             const inCart = isInCart(product._id);

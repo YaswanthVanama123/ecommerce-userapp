@@ -339,6 +339,7 @@ const Home = () => {
   };
 
   const handleCategoryClick = (categoryId) => {
+    console.log('[Home] handleCategoryClick - categoryId:', categoryId);
     navigate(`/products?category=${categoryId}`);
   };
 
@@ -535,23 +536,45 @@ const Home = () => {
                   <button
                     key={category._id}
                     onClick={() => handleCategoryClick(category._id)}
-                    className="group text-left"
+                    className="group text-left h-full"
                   >
-                    <div className={`${colors.bg} ${colors.border} border-2 rounded-2xl p-8 md:p-10 text-center hover:shadow-xl transition-all transform hover:-translate-y-1`}>
-                      <div className={`w-20 h-20 ${colors.bg} rounded-2xl flex items-center justify-center mx-auto mb-5 ${colors.text} group-hover:scale-110 transition-transform shadow-md`}>
-                        {getCategoryIcon(category.name)}
+                    <div className={`${colors.bg} ${colors.border} border-2 rounded-2xl p-6 md:p-8 text-center hover:shadow-xl transition-all transform hover:-translate-y-1 h-full flex flex-col min-h-[280px] md:min-h-[300px]`}>
+                      {/* Category Image or Icon */}
+                      <div className={`w-16 h-16 md:w-20 md:h-20 ${colors.bg} rounded-2xl flex items-center justify-center mx-auto mb-4 ${colors.text} group-hover:scale-110 transition-transform shadow-md overflow-hidden flex-shrink-0`}>
+                        {category.image ? (
+                          <img
+                            src={category.image}
+                            alt={category.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Fallback to icon if image fails to load
+                              e.target.style.display = 'none';
+                              e.target.parentElement.innerHTML = `${e.target.parentElement.innerHTML}<div class="w-full h-full flex items-center justify-center">${e.target.parentElement.getAttribute('data-icon')}</div>`;
+                            }}
+                            data-icon={getCategoryIcon(category.name)}
+                          />
+                        ) : (
+                          getCategoryIcon(category.name)
+                        )}
                       </div>
-                      <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
-                        {category.name}
-                      </h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        {category.description || 'Explore collection'}
-                      </p>
-                      <div className="flex items-center justify-center text-sm font-semibold text-gray-700 group-hover:text-pink-600 transition-colors">
-                        Shop Now
-                        <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+
+                      {/* Content with flex-grow */}
+                      <div className="flex-grow flex flex-col justify-between">
+                        <div>
+                          <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 line-clamp-1">
+                            {category.name}
+                          </h3>
+                          <p className="text-xs md:text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
+                            {category.description || 'Explore collection'}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-center text-sm font-semibold text-gray-700 group-hover:text-pink-600 transition-colors mt-auto">
+                          Shop Now
+                          <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   </button>
