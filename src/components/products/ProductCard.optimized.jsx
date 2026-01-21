@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState, memo, useMemo, useCallback } from 'react';
 import { useCartActions } from '../../context/CartContext';
-import { useWishlistActions } from '../../context/WishlistContext';
+import { useWishlistWithActions } from '../../context/WishlistContext';
 
 // Memoized sub-components for better performance
 const DiscountBadge = memo(({ discount }) => (
@@ -90,7 +90,10 @@ const ProductCard = memo(({ product }) => {
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const { addToCart } = useCartActions();
-  const { toggleWishlist, isInWishlist } = useWishlistActions();
+  const { toggleWishlist, isInWishlist, wishlist } = useWishlistWithActions();
+
+  // Calculate wishlist state - always up-to-date
+  const inWishlist = useMemo(() => isInWishlist(product._id), [isInWishlist, product._id, wishlist]);
 
   // Memoize expensive calculations
   const hasDiscount = useMemo(() => product.discount > 0, [product.discount]);
@@ -107,11 +110,6 @@ const ProductCard = memo(({ product }) => {
       ? 'https://via.placeholder.com/300x400?text=Image+Not+Available'
       : imageUrl;
   }, [product.images, imageError]);
-
-  const inWishlist = useMemo(() =>
-    isInWishlist(product._id),
-    [isInWishlist, product._id]
-  );
 
   const isOutOfStock = useMemo(() => product.stock === 0, [product.stock]);
   const isLowStock = useMemo(() => product.stock > 0 && product.stock <= 10, [product.stock]);
@@ -132,7 +130,9 @@ const ProductCard = memo(({ product }) => {
   const handleToggleWishlist = useCallback(async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
     await toggleWishlist(product._id);
+    // useMemo will automatically recalculate when wishlist changes
   }, [toggleWishlist, product._id]);
 
   const handleImageLoad = useCallback(() => {
@@ -147,7 +147,7 @@ const ProductCard = memo(({ product }) => {
   return (
     <div className="relative block bg-white rounded-lg overflow-hidden shadow-product hover:shadow-product-hover transition-shadow group">
       {/* Product Image */}
-      <Link to={`/products/${product._id}`} className="block">
+      <Link to={`/product/${product._id}`} className="block">
         <div className="relative aspect-[3/4] overflow-hidden bg-white">
           {/* Loading Skeleton */}
           {!imageLoaded && (
@@ -190,7 +190,7 @@ const ProductCard = memo(({ product }) => {
       </Link>
 
       {/* Product Info */}
-      <Link to={`/products/${product._id}`} className="block p-3">
+      <Link to={`/product/${product._id}`} className="block p-3">
         {/* Brand/Category */}
         {product.category?.name && (
           <p className="text-xs text-gray-500 uppercase mb-1 font-medium">

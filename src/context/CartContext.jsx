@@ -137,10 +137,10 @@ export const CartProvider = ({ children }) => {
       const response = await cartApi.getCart();
       console.log('[CartContext] fetchCart response:', response);
 
-      // API returns response.data which contains { success, message, data: { cart: {...} } }
-      // cartApi.getCart() returns response.data, so the structure is: { cart: {...} }
-      // Therefore we access response.cart directly, NOT response.data.cart
-      const fetchedCart = response.cart || null;
+      // API returns { success, message, data: { cart: {...} } }
+      // cartApi.getCart() returns response.data, so: { success, data: { cart: {...} } }
+      // Therefore we access response.data.cart
+      const fetchedCart = response.data?.cart || null;
       console.log('[CartContext] fetchedCart:', fetchedCart);
 
       if (isMounted.current) {
@@ -214,10 +214,12 @@ export const CartProvider = ({ children }) => {
           console.log('[CartContext] User is authenticated, fetching cart...');
 
           // Always fetch fresh data for authenticated users
-          // Don't rely on cache - it might be stale
           if (!isCancelled) {
             setLoading(true);
             await mergeGuestCart();
+
+            // ALWAYS clear guest cart after login - use backend data only
+            clearGuestCart();
           }
 
           // Fetch fresh data

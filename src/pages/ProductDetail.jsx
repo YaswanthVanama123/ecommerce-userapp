@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { productApi, reviewApi } from '../api';
 import { useCartActions } from '../context/CartContext';
-import { useWishlistActions } from '../context/WishlistContext';
+import { useWishlistWithActions } from '../context/WishlistContext';
 import { useAuth, useAuthActions } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import PincodeChecker from '../components/PincodeChecker';
@@ -19,7 +19,7 @@ const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCartActions();
-  const { toggleWishlist, isInWishlist: checkIsInWishlist } = useWishlistActions();
+  const { toggleWishlist, isInWishlist: checkIsInWishlist, wishlist } = useWishlistWithActions();
   const { isAuthenticated } = useAuth();
   const { login } = useAuthActions();
 
@@ -35,8 +35,26 @@ const ProductDetail = () => {
   const [loadedImages, setLoadedImages] = useState(new Set());
   const imageScrollRef = useRef(null);
 
-  // Wishlist state - use API response if available, otherwise check context
-  const isInWishlist = product?.isInWishlist ?? checkIsInWishlist(id);
+  // Wishlist state - use useMemo to always have correct value
+  const isInWishlist = useMemo(() => {
+    // For authenticated users with product data, check product.isInWishlist first
+    // This handles the case where context hasn't loaded yet
+    if (isAuthenticated && product?.isInWishlist !== undefined) {
+      console.log('[ProductDetail] Using product.isInWishlist from API:', product.isInWishlist);
+      return product.isInWishlist;
+    }
+
+    // Otherwise use context (works for guest users and after context loads)
+    const isIn = checkIsInWishlist(id);
+    console.log('[ProductDetail] Using checkIsInWishlist:', {
+      productId: id,
+      isIn,
+      wishlistLength: wishlist?.length,
+      isAuthenticated
+    });
+    return isIn;
+  }, [checkIsInWishlist, id, wishlist, isAuthenticated, product?.isInWishlist]);
+
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Reviews state
@@ -113,6 +131,11 @@ const ProductDetail = () => {
     try {
       setLoading(true);
       const response = await productApi.getProductById(id);
+      console.log('[ProductDetail] Product fetched:', {
+        productId: id,
+        isInWishlist: response.data?.isInWishlist,
+        hasIsInWishlist: 'isInWishlist' in (response.data || {})
+      });
       setProduct(response.data);
 
       // Reset loaded images when product changes
@@ -188,6 +211,14 @@ const ProductDetail = () => {
     setWishlistLoading(true);
     try {
       await toggleWishlist(id);
+
+      // Update product.isInWishlist for immediate UI update
+      if (product) {
+        setProduct({
+          ...product,
+          isInWishlist: !product.isInWishlist
+        });
+      }
     } catch (err) {
       console.error('Error updating wishlist:', err);
     } finally {

@@ -358,7 +358,7 @@ const ProductComparison = () => {
                     <td key={product._id} className="py-4 px-4">
                       <div className="flex flex-col gap-2">
                         <button
-                          onClick={() => navigate(`/products/${product._id}`)}
+                          onClick={() => navigate(`/product/${product._id}`)}
                           className="w-full py-2 px-4 border-2 border-pink-600 text-pink-600 rounded-lg font-semibold hover:bg-pink-50 transition-colors text-sm"
                         >
                           View Details

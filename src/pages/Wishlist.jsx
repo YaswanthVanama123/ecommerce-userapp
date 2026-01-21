@@ -460,7 +460,7 @@ const Wishlist = () => {
                   />
                 </div>
                 {/* Product Image */}
-                <Link to={`/products/${product._id}`} className="block relative">
+                <Link to={`/product/${product._id}`} className="block relative">
                   <div className="aspect-[3/4] overflow-hidden bg-gray-100">
                     <img
                       src={product.images?.[0] || 'https://via.placeholder.com/300x400?text=No+Image'}
@@ -508,7 +508,7 @@ const Wishlist = () => {
 
                   {/* Product Name */}
                   <Link
-                    to={`/products/${product._id}`}
+                    to={`/product/${product._id}`}
                     className="block text-sm md:text-base font-semibold text-gray-900 mb-1 line-clamp-2 min-h-[2.5rem] hover:text-pink-600 transition-colors"
                   >
                     {product.name}

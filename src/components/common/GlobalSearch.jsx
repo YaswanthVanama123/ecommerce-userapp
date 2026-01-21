@@ -73,6 +73,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
       ]);
 
       if (searchResults.success) {
+        console.log('[GlobalSearch] Search results:', searchResults.data);
         setResults({
           products: searchResults.data.products || [],
           orders: searchResults.data.orders || [],
@@ -127,6 +128,25 @@ const GlobalSearch = ({ isOpen, onClose }) => {
     localStorage.setItem('recentSearches', JSON.stringify(updated));
   };
 
+  // Helper function to get product ID safely
+  const getProductId = (product) => {
+    // Handle different possible structures
+    if (!product) return null;
+
+    // Direct _id field
+    if (product._id) return String(product._id);
+
+    // Direct id field
+    if (product.id) return String(product.id);
+
+    // Nested product object
+    if (product.product?._id) return String(product.product._id);
+    if (product.product?.id) return String(product.product.id);
+
+    console.error('[GlobalSearch] Product missing ID:', product);
+    return null;
+  };
+
   // Handle navigation
   const handleNavigate = (path, searchTerm) => {
     if (searchTerm) {
@@ -159,7 +179,10 @@ const GlobalSearch = ({ isOpen, onClose }) => {
       if (selected.type === 'suggestion') {
         setQuery(selected.value);
       } else if (selected.type === 'product') {
-        handleNavigate(`/products/${selected.value._id}`, query);
+        const productId = getProductId(selected.value);
+        if (productId) {
+          handleNavigate(`/product/${productId}`, query);
+        }
       } else if (selected.type === 'order') {
         handleNavigate(`/orders/${selected.value._id}`, query);
       } else if (selected.type === 'category') {
@@ -188,38 +211,53 @@ const GlobalSearch = ({ isOpen, onClose }) => {
         onClick={onClose}
       />
 
-      {/* Search Modal */}
-      <div className="fixed top-20 left-1/2 -translate-x-1/2 w-full max-w-2xl z-50 px-4">
-        <div className="bg-white rounded-lg shadow-2xl overflow-hidden">
-          {/* Search Input */}
-          <div className="flex items-center border-b border-gray-200 p-4">
-            <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Search products, orders, categories..."
-              className="flex-1 outline-none text-lg"
-            />
-            {loading && (
-              <div className="ml-3">
-                <svg className="animate-spin h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </div>
-            )}
-            <kbd className="hidden md:block ml-3 px-2 py-1 text-xs bg-gray-100 rounded border border-gray-300">
+      {/* Search Modal - Mobile: Full screen, Desktop: Centered modal */}
+      <div className="fixed inset-x-0 top-0 lg:top-20 lg:left-1/2 lg:-translate-x-1/2 lg:w-full lg:max-w-2xl z-50 lg:px-4 h-full lg:h-auto">
+        <div className="bg-white lg:rounded-lg shadow-2xl overflow-hidden h-full lg:h-auto flex flex-col">
+          {/* Header with Close Button - Mobile optimized */}
+          <div className="flex items-center justify-between border-b border-gray-200 p-4 lg:px-4 lg:py-3 flex-shrink-0">
+            <div className="flex items-center flex-1 mr-3">
+              <svg className="w-5 h-5 text-gray-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Search products, orders..."
+                className="flex-1 outline-none text-base lg:text-lg"
+              />
+              {loading && (
+                <div className="ml-3 flex-shrink-0">
+                  <svg className="animate-spin h-5 w-5 text-pink-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              )}
+            </div>
+
+            {/* Close Button - Always visible on mobile, optional on desktop */}
+            <button
+              onClick={onClose}
+              className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-full transition-colors lg:hidden"
+              aria-label="Close search"
+            >
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* ESC key hint - Desktop only */}
+            <kbd className="hidden lg:block ml-3 px-2 py-1 text-xs bg-gray-100 rounded border border-gray-300 flex-shrink-0">
               ESC
             </kbd>
           </div>
 
-          {/* Search Results */}
-          <div className="max-h-[60vh] overflow-y-auto">
+          {/* Search Results - Scrollable */}
+          <div className="overflow-y-auto flex-1 lg:max-h-[60vh]">
             {/* Recent Searches */}
             {showRecentSearches && (
               <div className="p-4 border-b border-gray-100">
@@ -228,21 +266,21 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                   {recentSearches.map((search, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-2 hover:bg-gray-50 rounded cursor-pointer group"
+                      className="flex items-center justify-between p-3 lg:p-2 hover:bg-gray-50 active:bg-gray-100 rounded cursor-pointer group transition-colors"
                       onClick={() => setQuery(search)}
                     >
-                      <div className="flex items-center">
-                        <svg className="w-4 h-4 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="flex items-center min-w-0 flex-1">
+                        <svg className="w-4 h-4 text-gray-400 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="text-sm text-gray-700">{search}</span>
+                        <span className="text-sm text-gray-700 truncate">{search}</span>
                       </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           clearRecentSearch(search);
                         }}
-                        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-gray-600"
+                        className="opacity-100 lg:opacity-0 lg:group-hover:opacity-100 text-gray-400 hover:text-gray-600 p-2 -mr-2 flex-shrink-0"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -263,7 +301,7 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                     <button
                       key={index}
                       onClick={() => setQuery(suggestion)}
-                      className="px-3 py-1 text-sm bg-pink-50 text-pink-600 rounded-full hover:bg-pink-100 transition-colors"
+                      className="px-4 py-2 lg:px-3 lg:py-1 text-sm bg-pink-50 text-pink-600 rounded-full hover:bg-pink-100 active:bg-pink-200 transition-colors"
                     >
                       {suggestion}
                     </button>
@@ -277,26 +315,36 @@ const GlobalSearch = ({ isOpen, onClose }) => {
               <div className="p-4 border-b border-gray-100">
                 <h3 className="text-sm font-semibold text-gray-500 mb-3">Products</h3>
                 <div className="space-y-2">
-                  {results.products.slice(0, 5).map((product) => (
-                    <div
-                      key={product._id}
-                      onClick={() => handleNavigate(`/products/${product._id}`, query)}
-                      className="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer"
-                    >
+                  {results.products.slice(0, 5).map((product) => {
+                    const productId = getProductId(product);
+                    console.log('[GlobalSearch] Product item:', { product, productId });
+                    return (
+                      <div
+                        key={productId || `product-${Math.random()}`}
+                        onClick={() => {
+                          if (productId) {
+                            handleNavigate(`/product/${productId}`, query);
+                          } else {
+                            console.error('[GlobalSearch] Cannot navigate - missing product ID');
+                          }
+                        }}
+                        className="flex items-center p-3 lg:p-2 hover:bg-gray-50 active:bg-gray-100 rounded cursor-pointer transition-colors"
+                      >
                       <img
                         src={product.images?.[0] || 'https://via.placeholder.com/50'}
                         alt={product.name}
-                        className="w-12 h-12 object-cover rounded mr-3"
+                        className="w-14 h-14 lg:w-12 lg:h-12 object-cover rounded mr-3 flex-shrink-0"
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{product.name}</p>
-                        <p className="text-sm text-gray-500">₹{product.price}</p>
+                        <p className="text-sm text-pink-600 font-semibold">₹{product.price}</p>
                       </div>
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -360,7 +408,8 @@ const GlobalSearch = ({ isOpen, onClose }) => {
                 </svg>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Search StyleHub</h3>
                 <p className="text-sm text-gray-500">Find products, orders, and more</p>
-                <div className="mt-4 flex items-center justify-center space-x-4 text-xs text-gray-400">
+                {/* Desktop only keyboard shortcut hint */}
+                <div className="mt-4 hidden lg:flex items-center justify-center space-x-4 text-xs text-gray-400">
                   <span className="flex items-center">
                     <kbd className="px-2 py-1 bg-gray-100 rounded border border-gray-300 mr-1">Ctrl</kbd> +
                     <kbd className="px-2 py-1 bg-gray-100 rounded border border-gray-300 ml-1">K</kbd>

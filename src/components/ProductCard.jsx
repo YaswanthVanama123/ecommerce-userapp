@@ -7,7 +7,7 @@ const ProductCard = ({ product, compact = false }) => {
 
   return (
     <Link
-      to={`/products/${product._id}`}
+      to={`/product/${product._id}`}
       className={`block bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
         compact ? '' : 'group'
       }`}

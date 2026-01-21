@@ -105,16 +105,20 @@ export const WishlistProvider = ({ children }) => {
 
       const response = await wishlistApi.getWishlist();
       console.log('[WishlistContext] fetchWishlist response:', response);
+      console.log('[WishlistContext] response.data:', response.data);
+      console.log('[WishlistContext] response.data.wishlist:', response.data?.wishlist);
 
-      // API returns response.data which contains { wishlist: { items: [...] } }
-      // wishlistApi.getWishlist() returns response.data, so: { wishlist: { items: [...] } }
-      // Therefore we access response.wishlist.items directly
-      const fetchedWishlist = response.wishlist?.items || [];
+      // API returns { success, message, data: { wishlist: { items: [...] } } }
+      // wishlistApi.getWishlist() returns response.data, so: { success, data: { wishlist: {...} } }
+      // Therefore we access response.data.wishlist.items
+      const fetchedWishlist = response.data?.wishlist?.items || [];
 
       console.log('[WishlistContext] fetchedWishlist:', fetchedWishlist);
       console.log('[WishlistContext] fetchedWishlist length:', fetchedWishlist?.length);
+      console.log('[WishlistContext] fetchedWishlist first item:', fetchedWishlist[0]);
 
       if (isMounted.current) {
+        console.log('[WishlistContext] Setting wishlist state to:', fetchedWishlist);
         setWishlist(fetchedWishlist);
         saveWishlistToStorage(fetchedWishlist);
         console.log('[WishlistContext] Wishlist state updated, length:', fetchedWishlist?.length);
@@ -172,10 +176,12 @@ export const WishlistProvider = ({ children }) => {
           console.log('[WishlistContext] User is authenticated, fetching wishlist...');
 
           // Always fetch fresh data for authenticated users
-          // Don't rely on cache - it might be stale
           if (!isCancelled) {
             setLoading(true);
             await mergeGuestWishlist();
+
+            // ALWAYS clear guest wishlist after login - use backend data only
+            clearGuestWishlist();
           }
 
           if (!isCancelled) {
